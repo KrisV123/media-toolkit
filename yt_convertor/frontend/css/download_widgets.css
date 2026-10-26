@@ -1,0 +1,53 @@
+DownloadLabels {
+    layout: horizontal;
+    padding: 1;
+}
+
+DownloadSingleWidget {
+    padding: 0 2;
+    border: round $accent;
+}
+
+DownloadPlaylistWidget{
+    padding: 0 2;
+    border: round $accent;
+}
+
+DownloadID {
+    layout: horizontal;
+    width: auto;
+    margin: 1 0
+}
+
+DownloadLabels Label {
+    padding: 0 5 0 0
+}
+
+Progress {
+    layout: horizontal;
+    height: auto;
+}
+
+Progress ProgressBar {
+    width: 1fr;
+    margin: 0 0 1 0;
+}
+
+ProgressButtons {
+    layout: horizontal;
+    width: auto;
+    height: auto;
+}
+
+PlaylistSingleVideo {
+    layout: horizontal
+}
+
+PlaylistCatalog {
+    margin: 1 1
+}
+
+ErrorWidget {
+    padding: 1 2;
+    border: round $accent
+}

@@ -1,0 +1,53 @@
+InputBar {
+    padding: 0;
+    dock: bottom;
+    border: round $accent;
+}
+
+InputEntry {
+    dock: top;
+}
+
+InputEntry Input {
+    margin: 0 0 1 0;
+    background: $boost;
+}
+
+InputEntry Button {
+    dock: right;
+    border: round $accent;
+    background: $background;
+}
+
+InputFormats {
+    layout: horizontal;
+    margin: 0 0 1 1
+}
+
+InputFormats Button {
+    width: auto;
+    min-width: 7;
+    height: auto;
+    margin: 0 1 0 0;
+    border: round $accent;
+    background: $background;
+}
+
+ExtraInputSettings {
+    layout: horizontal;
+    margin: 0 0 0 1;
+}
+
+ExtraInputSettings Select{
+    width: 25;
+}
+
+ExtraInputSettings Button{
+    height: auto;
+    border: round $accent;
+    background: $background;
+}
+
+.SelectedButton {
+    color: red;
+}
