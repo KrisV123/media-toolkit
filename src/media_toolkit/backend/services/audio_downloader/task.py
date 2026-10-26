@@ -1,5 +1,5 @@
-from yt_convertor.type import DownloadInfo
-from yt_convertor.backend.services.youtube_base import YoutubeBaseTask
+from media_toolkit.type import DownloadInfo
+from media_toolkit.backend.services.youtube_base import YoutubeBaseTask
 from .service import AudioDownloader
 
 class AudioDownloaderTask(YoutubeBaseTask[AudioDownloader]):

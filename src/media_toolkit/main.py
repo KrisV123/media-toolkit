@@ -1,8 +1,8 @@
 import asyncio
 import logging
 
-from yt_convertor.frontend import YtConvertorApp
-from yt_convertor.backend import TaskManager
+from media_toolkit.frontend import YtConvertorApp
+from media_toolkit.backend import TaskManager
 
 logging.basicConfig(
     filename='debug.log',

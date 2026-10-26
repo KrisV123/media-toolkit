@@ -8,11 +8,10 @@ from textual.types import NoSelection
 from collections.abc import Iterable
 from urllib.parse import urlsplit
 
-from yt_convertor.type import AUDIO_FORMATS, VIDEO_FORMATS, DownloadInfo
-from yt_convertor.backend.services.audio_downloader import AudioDownloaderTask
-from yt_convertor.backend.services.video_downloader import VideoDownloaderTask
-from yt_convertor.backend import TaskManager
-from yt_convertor.backend import Task
+from media_toolkit.type import AUDIO_FORMATS, VIDEO_FORMATS, DownloadInfo
+from media_toolkit.backend.services.audio_downloader import AudioDownloaderTask
+from media_toolkit.backend.services.video_downloader import VideoDownloaderTask
+from media_toolkit.backend import TaskManager
 
 from .download_single import DownloadSingleWidget
 from .download_playlist import DownloadPlaylistWidget

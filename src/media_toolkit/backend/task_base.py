@@ -1,9 +1,9 @@
 from abc import ABC, abstractmethod
 from enum import Enum, auto
 from dataclasses import dataclass
-from yt_convertor.backend.event_bus import EventBus
+from media_toolkit.backend.event_bus import EventBus
 
-from yt_convertor.type import DownloadInfo
+from media_toolkit.type import DownloadInfo
 
 class TaskError(Exception):
     pass

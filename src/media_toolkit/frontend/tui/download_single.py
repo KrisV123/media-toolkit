@@ -1,8 +1,8 @@
 from textual.widgets import Static, Label
 from textual.widget import Widget
 
-from yt_convertor.type import DownloadInfo
-from yt_convertor.backend import Task, TaskState, TaskManager, Events
+from media_toolkit.type import DownloadInfo
+from media_toolkit.backend import Task, TaskState, TaskManager, Events
 
 from .download_helpers import DownloadLabels, Progress, ICONS
 from .messages import Changed

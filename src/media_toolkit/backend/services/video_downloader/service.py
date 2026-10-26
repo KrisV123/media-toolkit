@@ -2,8 +2,8 @@ import yt_dlp #type:ignore
 from typing import Any
 from copy import deepcopy
 
-from yt_convertor.type import DownloadInfo, FFMPEG_DIR, DENO_EXE
-from yt_convertor.backend.services.youtube_base.service import YoutubeBase
+from media_toolkit.type import DownloadInfo, FFMPEG_DIR, DENO_EXE
+from media_toolkit.backend.services.youtube_base.service import YoutubeBase
 
 class VideoDownloader(YoutubeBase):
     compatible_audio: dict[str, list[str]] = {

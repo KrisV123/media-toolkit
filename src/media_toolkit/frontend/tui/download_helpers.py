@@ -4,10 +4,10 @@ from textual.widget import Widget
 
 from collections.abc import Iterable
 
-from yt_convertor.type import VIDEO_FORMATS
+from media_toolkit.type import VIDEO_FORMATS
 from .messages import Changed, Restart
-from yt_convertor.backend.task_base import Task, TaskState
-from yt_convertor.backend.task_manager import TaskManager
+from media_toolkit.backend.task_base import Task, TaskState
+from media_toolkit.backend.task_manager import TaskManager
 
 ICONS = {
     TaskState.NOT_READY: '🟡',

@@ -4,9 +4,9 @@ from textual.widget import Widget
 
 from collections.abc import Iterable
 
-from yt_convertor.type import DownloadInfo
-from yt_convertor.backend import TaskState, TaskManager, Events, DownloadState
-from yt_convertor.backend.services.youtube_base import YoutubeBaseTask
+from media_toolkit.type import DownloadInfo
+from media_toolkit.backend import TaskState, TaskManager, Events, DownloadState
+from media_toolkit.backend.services.youtube_base import YoutubeBaseTask
 
 from .download_helpers import DownloadLabels, Progress, ICONS
 from .messages import Changed

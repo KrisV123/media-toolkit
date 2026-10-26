@@ -3,10 +3,10 @@ from typing import Any, cast
 from urllib.parse import urlparse, parse_qs
 from abc import ABC, abstractmethod
 
-from yt_convertor.backend.services.type import ServiceError
+from media_toolkit.backend.services.type import ServiceError
 
-from yt_convertor.type import DownloadInfo, DOWNLOAD_FOLDER
-from yt_convertor.backend.services.type import StoppedService
+from media_toolkit.type import DownloadInfo, DOWNLOAD_FOLDER
+from media_toolkit.backend.services.type import StoppedService
 
 class YoutubeBase(ABC):
     def __init__(self, download_info: DownloadInfo, id: int):

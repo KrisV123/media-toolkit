@@ -1,18 +1,14 @@
-from __future__ import annotations
 import asyncio
 import random
 
 from functools import partial
-from typing import TypeVar
 
-from yt_convertor.type import DownloadInfo
+from media_toolkit.type import DownloadInfo
 from .task_base import Task, TaskState
 from .event_bus import EventBus, Events
 
 import logging
 LOGGER = logging.getLogger(__name__)
-
-TaskT = TypeVar('TaskT', bound=Task)
 
 class TaskManager:
 
@@ -36,7 +32,7 @@ class TaskManager:
             self._initialized = True
             self.running_meta_routines: dict[int, asyncio.Task] = dict()
 
-    def get_task(self, task_id: int, task_type: type[TaskT]) -> TaskT | None:
+    def get_task[T: Task](self, task_id: int, task_type: type[T]) -> T | None:
         task = self._task_registry[task_id]
         if isinstance(task, task_type):
             return task
@@ -57,7 +53,7 @@ class TaskManager:
         if meta is not None:
             await meta
 
-    async def register(self, task_type: type[TaskT], download_info: DownloadInfo) -> TaskT:
+    async def register[T: Task](self, task_type: type[T], download_info: DownloadInfo) -> T:
         task_id = self.generate_task_id()
         task = task_type(download_info, task_id)
         self._run_metadata_coro(task)

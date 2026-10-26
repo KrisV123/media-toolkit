@@ -1,6 +1,6 @@
 from textual.message import Message
-from yt_convertor.backend import TaskState
-from yt_convertor.type import DownloadInfo
+from media_toolkit.backend import TaskState
+from media_toolkit.type import DownloadInfo
 
 class Changed(Message):
     def __init__(self, status: TaskState):
