@@ -6,3 +6,4 @@ venv
 debug
 test.py
 vendor
+debug.log
