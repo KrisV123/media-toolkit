@@ -1,4 +1,5 @@
 import shutil
+import gc
 from typing import Any
 
 from media_toolkit.type import DownloadInfo
@@ -108,8 +109,17 @@ class YoutubeBaseTask[ServiceT: YoutubeBase](Task, TaskSupportsCollection):
         self._service.stop_event = False
         self._change_status(TaskState.READY)
 
+    def delete_folder(self) -> None:
+        try:
+            shutil.rmtree(self._service.output_folder)
+        except FileNotFoundError:
+            pass
+        except OSError:
+            gc.collect()
+            shutil.rmtree(self._service.output_folder, ignore_errors=True)
+
     def cancel(self) -> None:
-        shutil.rmtree(self._service.output_folder, ignore_errors=True)
+        self.delete_folder()
         self._change_status(TaskState.CANCELLED)
 
     @staticmethod

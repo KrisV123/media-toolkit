@@ -1,7 +1,6 @@
 from textual.widgets import Static, Label
 from textual.widget import Widget
 
-from media_toolkit.type import DownloadInfo
 from media_toolkit.task_types import TaskState
 
 from media_toolkit.backend import TaskManager, Events
