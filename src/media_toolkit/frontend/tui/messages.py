@@ -1,5 +1,5 @@
 from textual.message import Message
-from media_toolkit.backend import TaskState
+from media_toolkit.task_types import TaskState
 from media_toolkit.type import DownloadInfo
 
 class Changed(Message):

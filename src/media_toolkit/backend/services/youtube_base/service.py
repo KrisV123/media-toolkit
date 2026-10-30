@@ -2,11 +2,16 @@ import yt_dlp #type:ignore
 from typing import Any, cast
 from urllib.parse import urlparse, parse_qs
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
 
-from media_toolkit.backend.services.type import ServiceError
-
+from media_toolkit.backend.services.type import StoppedService, ServiceError
 from media_toolkit.type import DownloadInfo, DOWNLOAD_FOLDER
-from media_toolkit.backend.services.type import StoppedService
+
+@dataclass(slots=True)
+class DownloadParams:
+    abr: float | None = None
+    height: int | None = None
+
 
 class YoutubeBase(ABC):
     def __init__(self, download_info: DownloadInfo, id: int):
@@ -18,6 +23,9 @@ class YoutubeBase(ABC):
         self.stop_event = False
         self.output_folder = DOWNLOAD_FOLDER / f'convertor_{self.id}'
         self.options: dict[str, Any] = {}
+
+        self.params_by_pos: dict[int | None, DownloadParams] = {}
+        "None for single video"
 
     def _create_download_path(self) -> str:
         """add download path based on playlist param"""
@@ -49,7 +57,26 @@ class YoutubeBase(ABC):
             info = ytd.extract_info(self.url, download=False)
         return cast(dict[str, Any], info)
 
-    def _progress_hook(self, d: dict[str, Any]) -> Any:
+    def _collect_video_params(self, info: dict[str, Any]) -> None:
+        """
+        hook method to yt_dlp downloading,
+        that takes update dict and setup current video metadata
+        """
+
+        abr, height = info.get('abr'), info.get('height')
+        pos = info.get('playlist_autonumber') or None
+        params = self.params_by_pos.setdefault(pos, DownloadParams())
+        if abr:
+            params.abr = abr
+        if height:
+            params.height = height
+
+    def _progress_hook(self, d: dict[str, Any]) -> None:
+        self.progress_dict = d
+        info = d.get('info_dict') or {}
+        self._collect_video_params(info)
+
+    def _postprocessor_hook(self, d: dict[str, Any]) -> None:
         self.progress_dict = d
 
     def _stop_hook(self, d: dict[str, Any]) -> Any:

@@ -3,6 +3,15 @@ DownloadLabels {
     padding: 1;
 }
 
+DownloadLabels Label {
+    margin-right: 5
+}
+
+#fallback-label {
+    dock: right;
+    margin-right: 0
+}
+
 DownloadSingleWidget {
     padding: 0 2;
     border: round $accent;
@@ -17,10 +26,6 @@ DownloadID {
     layout: horizontal;
     width: auto;
     margin: 1 0
-}
-
-DownloadLabels Label {
-    padding: 0 5 0 0
 }
 
 Progress {

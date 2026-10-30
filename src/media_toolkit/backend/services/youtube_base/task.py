@@ -2,7 +2,10 @@ import shutil
 from typing import Any
 
 from media_toolkit.type import DownloadInfo
-from media_toolkit.backend import Task, TaskError, DownloadState
+from media_toolkit.protocols import TaskSupportsCollection
+from media_toolkit.task_types import TaskState, DownloadState
+
+from media_toolkit.backend import Task, TaskError
 from media_toolkit.backend.event_bus import Events
 from media_toolkit.backend.task_base import Task, TaskState, ProgressState, TaskError
 from media_toolkit.backend.services.type import StoppedService
@@ -12,7 +15,7 @@ from .service import YoutubeBase
 import logging
 LOGGER = logging.getLogger(__name__)
 
-class YoutubeBaseTask[ServiceT: YoutubeBase](Task):
+class YoutubeBaseTask[ServiceT: YoutubeBase](Task, TaskSupportsCollection):
     def __init__(self, download_info: DownloadInfo, id: int, service: type[ServiceT]):
         super().__init__(download_info, id)
         self._service = service(download_info, id)
@@ -84,7 +87,7 @@ class YoutubeBaseTask[ServiceT: YoutubeBase](Task):
     def start(self) -> None:
         try:
             if self._metadata is None:
-                raise TaskError('Metadata are missing. get_meta needs to finish first, probably failed')
+                raise TaskError(f'get_metadata routine did not finished properly. Routine error: {self._meta_exception}')
             self._change_status(TaskState.IN_PROCESS)
             self._service.download(self._metadata)
             self._change_status(TaskState.FINISHED)

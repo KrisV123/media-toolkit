@@ -32,32 +32,30 @@ class TaskManager:
             self._initialized = True
             self.running_meta_routines: dict[int, asyncio.Task] = dict()
 
-    def get_task[T: Task](self, task_id: int, task_type: type[T]) -> T | None:
-        task = self._task_registry[task_id]
-        if isinstance(task, task_type):
-            return task
-        return None
+    def _get_task(self, task_id: int) -> Task:
+        return self._task_registry[task_id]
 
     def generate_task_id(self) -> int:
         while (rand_int := random.randint(1, 10_000_000)) in self._task_registry.keys():
             pass
         return rand_int
 
-    def _run_metadata_coro(self, task: Task) -> None:
+    def _run_metadata_coro(self, task_id: int) -> None:
+        task = self._get_task(task_id)
         coro = asyncio.create_task(asyncio.to_thread(task.get_metadata))
         self.running_meta_routines[task.id] = coro
         coro.add_done_callback(partial(self._on_meta_done, task))
 
-    async def _wait_for_metadata(self, task: Task) -> None:
-        meta = self.running_meta_routines.pop(task.id, None)
+    async def _wait_for_metadata(self, task_id: int) -> None:
+        meta = self.running_meta_routines.pop(task_id, None)
         if meta is not None:
             await meta
 
     async def register[T: Task](self, task_type: type[T], download_info: DownloadInfo) -> T:
         task_id = self.generate_task_id()
         task = task_type(download_info, task_id)
-        self._run_metadata_coro(task)
         self._task_registry[task_id] = task
+        self._run_metadata_coro(task_id)
         await self.queue.put(task)
         LOGGER.debug(f'task {task.id} added to queue:' + repr(task))
         return task
@@ -70,45 +68,51 @@ class TaskManager:
             LOGGER.error(f'task {task.id}: getting metadata failed', exc_info=exc)
         self.event_bus.publish(Events.CHANGED_META)
 
-    async def start_new_task(self, task: Task) -> None:
+    async def start_new_task(self, task_id: int) -> None:
+        task = self._get_task(task_id)
         is_setup = task.setup()
         if not is_setup:
             LOGGER.critical(f'task is unable to setup. Skipping task', exc_info=task.fail)
             return
-        LOGGER.debug(f'task {task.id} is correctly setupped. Going to be executed')
-        await self.start_task(task)
+        LOGGER.debug(f'task {task_id} is correctly setupped. Going to be executed')
+        await self.start_task(task_id)
 
-    async def start_task(self, task: Task) -> None:
-        await self._wait_for_metadata(task)
+    async def start_task(self, task_id: int) -> None:
+        task = self._get_task(task_id)
+        await self._wait_for_metadata(task_id)
         await asyncio.to_thread(task.start)
-        LOGGER.debug(f'task {task.id} finished. Status: {task.status}')
+        LOGGER.debug(f'task {task_id} finished. Status: {task.status}')
         if task.status == TaskState.FAIL:
             LOGGER.debug(f'error messege: ', exc_info=task.fail)
 
-    async def pause_task(self, task: Task):
+    async def pause_task(self, task_id: int) -> None:
+        task = self._get_task(task_id)
         task.stop()
-        routine = self.running_routines.get(task.id)
+        routine = self.running_routines.get(task_id)
         if routine is not None:
             await asyncio.shield(routine)
-        LOGGER.debug(f'task {task.id} is paused')
+        LOGGER.debug(f'task {task_id} is paused')
 
-    async def stop_task(self, task: Task):
-        await self.pause_task(task)
+    async def stop_task(self, task_id: int) -> None:
+        task = self._get_task(task_id)
+        await self.pause_task(task_id)
         task.cancel()
-        LOGGER.debug(f'task {task.id} is stopped')
+        LOGGER.debug(f'task {task_id} is stopped')
 
-    async def resume_task(self, task: Task):
+    async def resume_task(self, task_id: int) -> None:
+        task = self._get_task(task_id)
         task.prepare_resume()
         await self.queue.put(task)
-        LOGGER.debug(f'task {task.id} is resumed')
+        LOGGER.debug(f'task {task_id} is resumed')
 
-    async def _run_one(self, task: Task):
+    async def _run_one(self, task_id: int) -> None:
+        task = self._get_task(task_id)
         try:
             async with self.semaphore:
                 if task.status == TaskState.NOT_READY:
-                    await self.start_new_task(task)
+                    await self.start_new_task(task_id)
                 elif task.status == TaskState.READY:
-                    await self.start_task(task)
+                    await self.start_task(task_id)
                 else:
                     LOGGER.critical(f'unexprected task state in queue: {task.status}')
         finally:
@@ -117,7 +121,7 @@ class TaskManager:
     async def _loop(self) -> None:
         while True:
             task = await self.queue.get()
-            routine = asyncio.create_task(self._run_one(task))
+            routine = asyncio.create_task(self._run_one(task.id))
             self.running_routines[task.id] = routine
 
     def start(self):
@@ -143,8 +147,8 @@ class TaskManager:
 
         terminal_state = (TaskState.FINISHED, TaskState.FAIL, TaskState.CANCELLED)
         stops = [
-            self.stop_task(task)
+            self.stop_task(task_id)
             for task_id in self.running_routines.copy().keys()
-            if (task := self._task_registry[task_id]).status not in terminal_state
+            if self._task_registry[task_id].status not in terminal_state
         ]
         await asyncio.gather(*stops, return_exceptions=True)

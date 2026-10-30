@@ -4,9 +4,9 @@ from textual.widget import Widget
 
 from collections.abc import Iterable
 
-from media_toolkit.type import DownloadInfo
-from media_toolkit.backend import TaskState, TaskManager, Events, DownloadState
-from media_toolkit.backend.services.youtube_base import YoutubeBaseTask
+from media_toolkit.backend import TaskManager, Events
+from media_toolkit.protocols import TaskSupportsCollection
+from media_toolkit.task_types import TaskState, DownloadState
 
 from .download_helpers import DownloadLabels, Progress, ICONS
 from .messages import Changed
@@ -19,7 +19,7 @@ SOLO_ICONS = {
 
 class PlaylistSingleVideo(Static):
 
-    def __init__(self, video_name: str | None, backend_task: YoutubeBaseTask, ord: int):
+    def __init__(self, video_name: str | None, backend_task: TaskSupportsCollection, ord: int):
         super().__init__()
         self.video_name = video_name
         self.backend_task = backend_task
@@ -31,10 +31,12 @@ class PlaylistSingleVideo(Static):
         yield Label(content=f"  0 %", id="percentage")
         yield Label(content="  ")
         yield Label(content=f"{self.video_name}")
+        yield Label(content="", id='fallback-label')
 
     def _on_mount(self, event: Mount) -> None:
         self._percentage = self.query_one("#percentage", Label)
         self._icon = self.query_one('#icon', Label)
+        self._fallback = self.query_one('#fallback-label', Label)
         self._timer = self.set_interval(0.3, self.update_percentage)
 
     def update_percentage(self) -> None:
@@ -44,14 +46,23 @@ class PlaylistSingleVideo(Static):
                 progress_num = int((progress.current / progress.total) * 100)
                 self._icon.update(content=SOLO_ICONS[status])
                 self._percentage.update(content=f'{progress_num:3d} %')
+            if status == DownloadState.FINISHED:
+                self.update_fallback()
 
         task_status = self.backend_task.status
         if task_status in (TaskState.FINISHED, TaskState.FAIL, TaskState.CANCELLED):
             self._timer.stop()
 
+    def update_fallback(self) -> None:
+        fallback = self.backend_task.check_fallback(self.ord)
+        if not fallback:
+            return
+        miss_flags = ', '.join(miss for miss in fallback)
+        self._fallback.update(content="   ↪ " + miss_flags)
+
 
 class PlaylistCatalog(Static):
-    def __init__(self, backend_task: YoutubeBaseTask):
+    def __init__(self, backend_task: TaskSupportsCollection):
         super().__init__()
         self.backend_task = backend_task
 
@@ -73,15 +84,16 @@ class PlaylistCatalog(Static):
 
 
 class DownloadPlaylistWidget(Static):
-    def __init__(self, download_info: DownloadInfo, backend_task: YoutubeBaseTask):
+    def __init__(self, backend_task: TaskSupportsCollection):
         super().__init__()
+        download_info = backend_task.download_info
         self.format = download_info.format
         self.audio_quality = download_info.audio_quality
         self.video_quality = download_info.video_quality
         self.backend_task = backend_task
 
     def compose(self) -> Iterable[Widget]:
-        yield DownloadLabels(self.format, self.audio_quality, self.video_quality)
+        yield DownloadLabels(self.backend_task)
         yield Progress(self.backend_task)
         yield PlaylistCatalog(self.backend_task)
 

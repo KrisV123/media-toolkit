@@ -9,6 +9,7 @@ from collections.abc import Iterable
 from urllib.parse import urlsplit
 
 from media_toolkit.type import AUDIO_FORMATS, VIDEO_FORMATS, DownloadInfo
+
 from media_toolkit.backend.services.audio_downloader import AudioDownloaderTask
 from media_toolkit.backend.services.video_downloader import VideoDownloaderTask
 from media_toolkit.backend import TaskManager
@@ -47,7 +48,9 @@ class InputFormats(Static):
 
 class ExtraInputSettings(Static):
     audio_quality = [
-        "128 kbps", "160 kbps", "192 kbps", "224 kbps", "256 kbps", "320 kbps"
+        "32 kbps", "48 kbps", "64 kbps", "80 kbps",
+        "96 kbps", "112 kbps", "128 kbps", "160 kbps",
+        "192 kbps", "224 kbps", "256 kbps", "320 kbps",
     ]
     video_quality = [
         "480p", "720p", "1080p", "1440p", "2160p"
@@ -146,48 +149,35 @@ class ErrorWidget(Static):
 
 
 class MainFrame(Static):
+    def __init__(self) -> None:
+        super().__init__()
+        self.downloads_widget = ScrollableContainer(id="downloads")
 
     def compose(self) -> Iterable[Widget]:
-        yield ScrollableContainer(id="downloads")
+        yield self.downloads_widget
         yield InputBar()
 
     async def add_download_widget(self, download_info: DownloadInfo) -> None:
-        downloads_widget = self.query_one("#downloads")
-
         validation_msg = self.get_validation_error_msg(download_info)
         if validation_msg:
-            downloads_widget.mount(ErrorWidget(validation_msg))
+            self.downloads_widget.mount(ErrorWidget(validation_msg))
+            self.downloads_widget.scroll_end()
             return
 
         manager = TaskManager()
-        """
-        widget = DownloadPlaylistWidget if download_info.is_playlist else DownloadSingleWidget
-        format = download_info.format
-        task: type[Task]
-        if format in AUDIO_FORMATS:
-            task = AudioDownloaderTask
-        elif format in VIDEO_FORMATS:
-            task = VideoDownloaderTask
-        else:
-            raise UIException("service for current format does not exist or is not registered")
-
-        regist_task = await manager.register(task, download_info)
-        downloads_widget.mount(widget(download_info, regist_task))
-        """
-
         widget = DownloadPlaylistWidget if download_info.is_playlist else DownloadSingleWidget
         format = download_info.format
 
         if format in AUDIO_FORMATS:
             audio_task = await manager.register(AudioDownloaderTask, download_info)
-            downloads_widget.mount(widget(download_info, audio_task))
+            self.downloads_widget.mount(widget(audio_task))
         elif format in VIDEO_FORMATS:
             video_task = await manager.register(VideoDownloaderTask, download_info)
-            downloads_widget.mount(widget(download_info, video_task))
+            self.downloads_widget.mount(widget(video_task))
         else:
             raise UIException("service for current format does not exist or is not registered")
 
-        downloads_widget.scroll_end()
+        self.downloads_widget.scroll_end()
 
     def is_url(self, url: str) -> bool:
         try:
@@ -207,11 +197,16 @@ class MainFrame(Static):
         elif download_info.widget_name == "":
             raise UIException("Missing widget name")
         elif download_info.format not in AUDIO_FORMATS | VIDEO_FORMATS:
-            raise UIException("service for current format does not exist or is not registered")
-        elif download_info.audio_quality == "":
-            return "Audio quality is missing"
+            if download_info.format == "":
+                return "Format is not selected"
+            else:
+                return "service for current format does not exist or is not registered"
+        elif download_info.format == "":
+            return "Format is not selected"
         elif download_info.format in VIDEO_FORMATS and download_info.video_quality == "":
             return "For video format, video quality have to be selected"
+        elif download_info.audio_quality == "":
+            return "Audio quality is missing"
 
         return None
 
