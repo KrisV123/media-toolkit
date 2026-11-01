@@ -48,13 +48,7 @@ class DownloadLabels(Static):
 
     def compose(self) -> Iterable[Widget]:
         yield Label(content='format: ' + self.format, id="format-label")
-        """
-        yield Label(content='audio quality: ' + self.audio_quality, id="audio-quality-label")
-        if self.video_quality != "":
-            yield Label(content='video quality: ' + self.video_quality, id="video-quality-label")
-        """
         yield QualityLabels(self.backend_task)
-        #yield Label(content="  ↪", id='fallback-label')
 
     def update_fallback(self) -> None:
         if self.fallback_label:

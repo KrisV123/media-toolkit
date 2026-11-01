@@ -3,7 +3,7 @@ from textual.widget import Widget
 
 from media_toolkit.task_types import TaskState
 
-from media_toolkit.backend import TaskManager, Events
+from media_toolkit.backend import Events
 
 from .download_helpers import DownloadLabels, Progress, ICONS
 from .messages import Changed
@@ -28,7 +28,7 @@ class DownloadSingleWidget(Static):
         self.border_title = f'{ICONS[self.backend_task.status]}  {self.backend_task.title}'
         self.border_subtitle = str(self.backend_task.id)
         meta_event = Events.CHANGED_META
-        TaskManager().event_bus.subscribe(meta_event, self.update_border_title)
+        self.backend_task.event_bus.subscribe(meta_event, self.update_border_title)
         status_event = Events.UPDATE_TASK_STATUS
         self.backend_task.event_bus.subscribe(status_event, self.update_border_title)
 

@@ -1,12 +1,18 @@
 from textual.events import Mount
+from textual.strip import Strip
 from textual.widgets import Static, Label
 from textual.widget import Widget
 
-from collections.abc import Iterable
+from textual.strip import Strip
+from textual.geometry import Size, Region
+from rich.segment import Segment
 
-from media_toolkit.backend import TaskManager, Events
+from collections.abc import Iterable
+from dataclasses import dataclass
+
+from media_toolkit.backend import Events
 from media_toolkit.protocols import TaskSupportsCollection
-from media_toolkit.task_types import TaskState, DownloadState
+from media_toolkit.task_types import ProgressState, TaskState, DownloadState
 
 from .download_helpers import DownloadLabels, Progress, ICONS
 from .messages import Changed
@@ -17,70 +23,110 @@ SOLO_ICONS = {
     DownloadState.ERROR: '❌'
 }
 
-class PlaylistSingleVideo(Static):
-
-    def __init__(self, video_name: str | None, backend_task: TaskSupportsCollection, ord: int):
-        super().__init__()
-        self.video_name = video_name
-        self.backend_task = backend_task
-        self.ord = ord
-
-    def compose(self) -> Iterable[Widget]:
-        yield Label(content=SOLO_ICONS[DownloadState.DOWNLOADING], id="icon")
-        yield Label(content="   ")
-        yield Label(content=f"  0 %", id="percentage")
-        yield Label(content="  ")
-        yield Label(content=f"{self.video_name}")
-        yield Label(content="", id='fallback-label')
-
-    def _on_mount(self, event: Mount) -> None:
-        self._percentage = self.query_one("#percentage", Label)
-        self._icon = self.query_one('#icon', Label)
-        self._fallback = self.query_one('#fallback-label', Label)
-        self._timer = self.set_interval(0.3, self.update_percentage)
-
-    def update_percentage(self) -> None:
-        if self.backend_task.playlist_ord == self.ord:
-            progress, status = self.backend_task.current_video_progress()
-            if progress.total is not None and progress.current:
-                progress_num = int((progress.current / progress.total) * 100)
-                self._icon.update(content=SOLO_ICONS[status])
-                self._percentage.update(content=f'{progress_num:3d} %')
-            if status == DownloadState.FINISHED:
-                self.update_fallback()
-
-        task_status = self.backend_task.status
-        if task_status in (TaskState.FINISHED, TaskState.FAIL, TaskState.CANCELLED):
-            self._timer.stop()
-
-    def update_fallback(self) -> None:
-        fallback = self.backend_task.check_fallback(self.ord)
-        if not fallback:
-            return
-        miss_flags = ', '.join(miss for miss in fallback)
-        self._fallback.update(content="   ↪ " + miss_flags)
+@dataclass(slots=True)
+class DownloadLine:
+    icon: DownloadState
+    percentage: int
+    title: str | None
+    fallback: str | None
 
 
-class PlaylistCatalog(Static):
+class PlaylistCatalog(Widget):
     def __init__(self, backend_task: TaskSupportsCollection):
         super().__init__()
         self.backend_task = backend_task
+        self.download_data: list[DownloadLine] = []
 
-    def compose(self) -> Iterable[Widget]:
-        yield from ()
+    def get_content_height(self, container: Size, viewport: Size, width: int) -> int:
+        return len(self.download_data)
+
+    def render_line(self, y: int) -> Strip:
+        base_style = self.rich_style
+
+        if y >= len(self.download_data):
+            return Strip.blank(self.size.width, base_style)
+
+        download_line = self.download_data[y]
+        left_part = Strip((
+            Segment(SOLO_ICONS[download_line.icon]),
+            Segment(" " * 2),
+            Segment(f'{download_line.percentage:3d}'),
+            Segment(" %" + " " * 2),
+            Segment(download_line.title or "failed to load"),
+        ))
+        fallback_text = download_line.fallback if download_line.fallback else ""
+        fallback_len = len(fallback_text)
+
+        width = self.size.width
+        left_part = left_part.adjust_cell_length(max(0, width - fallback_len))
+        right_part = Strip((Segment(fallback_text),))
+        return Strip.join((left_part, right_part)).apply_style(base_style)
 
     def _on_mount(self, event: Mount) -> None:
         if len(self.backend_task.playlist_items) == 0:
             meta_event = Events.CHANGED_META
-            TaskManager().event_bus.subscribe(meta_event, self.load_single_videos)
+            self.backend_task.event_bus.subscribe(meta_event, self.start_tick)
         else:
-            self.load_single_videos()
+            self.start_tick()
 
-    def load_single_videos(self) -> None:
-        for ord, title in enumerate(self.backend_task.playlist_items):
-            self.mount(PlaylistSingleVideo(title, self.backend_task, ord + 1))
+    def start_tick(self):
         meta_event = Events.CHANGED_META
-        TaskManager().event_bus.unsubsrcribe(meta_event, self.load_single_videos)
+        self.backend_task.event_bus.unsubscribe(meta_event, self.start_tick)
+        self.load_data()
+        self._timer = self.set_interval(0.25, self.update_data)
+
+    def load_data(self) -> None:
+        self.download_data = [
+            DownloadLine(DownloadState.DOWNLOADING, 0, title, None)
+            for title in self.backend_task.playlist_items
+        ]
+        self.refresh(layout=True)
+
+    def update_data(self) -> None:
+        self.update_download_end()
+
+        ord = self.backend_task.playlist_ord
+        if ord is None:
+            return
+
+        is_dirty_set: set[bool] = set()
+        progress, video_status = self.backend_task.current_video_progress()
+        is_dirty_set.add(self.update_percentage(ord, progress))
+        is_dirty_set.add(self.update_video_end(ord, video_status))
+
+        if any(is_dirty_set):
+            self.refresh(Region(0, ord, self.size.width, 1))
+
+    def update_download_end(self) -> None:
+        task_status = self.backend_task.status
+        if task_status in (TaskState.FINISHED, TaskState.FAIL, TaskState.CANCELLED):
+            self._timer.stop()
+
+    def update_video_end(self, ord: int, video_status: DownloadState) -> bool:
+        if video_status in (DownloadState.FINISHED, DownloadState.ERROR):
+            self.download_data[ord].icon = video_status
+            self.update_fallback(ord)
+            return True
+        return False
+
+    def update_percentage(self, ord: int, progress: ProgressState) -> bool:
+        if progress.total is not None and progress.current:
+            progress_num = int((progress.current / progress.total) * 100)
+            curr_progress_num = self.download_data[ord].percentage
+            if curr_progress_num != progress_num:
+                self.download_data[ord].percentage = progress_num
+                return True
+            return False
+        return False
+
+    def update_fallback(self, ord: int) -> bool:
+        fallback = self.backend_task.check_fallback(ord)
+        if not fallback:
+            return False
+        padding = ' ' * 3
+        miss_flags = padding + '↪ ' + ', '.join(miss for miss in fallback)
+        self.download_data[ord].fallback = miss_flags
+        return True
 
 
 class DownloadPlaylistWidget(Static):
@@ -101,7 +147,7 @@ class DownloadPlaylistWidget(Static):
         self.border_title = f'{ICONS[self.backend_task.status]}  {self.backend_task.title}'
         self.border_subtitle = str(self.backend_task.id)
         meta_event = Events.CHANGED_META
-        TaskManager().event_bus.subscribe(meta_event, self.update_border_title)
+        self.backend_task.event_bus.subscribe(meta_event, self.update_border_title)
         status_event = Events.UPDATE_TASK_STATUS
         self.backend_task.event_bus.subscribe(status_event, self.update_border_title)
 

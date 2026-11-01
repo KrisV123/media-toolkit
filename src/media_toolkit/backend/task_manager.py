@@ -5,7 +5,7 @@ from functools import partial
 
 from media_toolkit.type import DownloadInfo
 from .task_base import Task, TaskState
-from .event_bus import EventBus, Events
+from .event_bus import Events
 
 import logging
 LOGGER = logging.getLogger(__name__)
@@ -27,7 +27,6 @@ class TaskManager:
             self.running_routines: dict[int, asyncio.Task] = {}
             self.queue: asyncio.Queue[Task] = asyncio.Queue()
             self.semaphore = asyncio.Semaphore(3)
-            self.event_bus = EventBus()
 
             self._initialized = True
             self.running_meta_routines: dict[int, asyncio.Task] = dict()
@@ -66,7 +65,7 @@ class TaskManager:
         exc = fut.exception()
         if exc is not None:
             LOGGER.error(f'task {task.id}: getting metadata failed', exc_info=exc)
-        self.event_bus.publish(Events.CHANGED_META)
+        task.event_bus.publish(Events.CHANGED_META)
 
     async def start_new_task(self, task_id: int) -> None:
         task = self._get_task(task_id)

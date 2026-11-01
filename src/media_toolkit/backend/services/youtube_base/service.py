@@ -65,6 +65,7 @@ class YoutubeBase(ABC):
 
         abr, height = info.get('abr'), info.get('height')
         pos = info.get('playlist_autonumber') or None
+        pos = pos - 1 if pos is not None else None
         params = self.params_by_pos.setdefault(pos, DownloadParams())
         if abr:
             params.abr = abr

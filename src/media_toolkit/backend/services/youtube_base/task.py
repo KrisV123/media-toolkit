@@ -40,6 +40,8 @@ class YoutubeBaseTask[ServiceT: YoutubeBase](Task, TaskSupportsCollection):
         return self._state
 
     def _change_status(self, value: TaskState) -> None:
+        """internal method. Status shoud not be mutated manually"""
+
         self._state = value
         event = Events.UPDATE_TASK_STATUS
         self.event_bus.publish(event)
@@ -57,7 +59,8 @@ class YoutubeBaseTask[ServiceT: YoutubeBase](Task, TaskSupportsCollection):
     @property
     def playlist_ord(self) -> int | None:
         info = self._service.progress_dict.get('info_dict') or {}
-        return info.get('playlist_autonumber')
+        pos = info.get('playlist_autonumber')
+        return pos - 1 if pos is not None else None
 
     def get_metadata(self) -> None:
         try:

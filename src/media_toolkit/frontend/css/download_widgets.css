@@ -17,6 +17,10 @@ DownloadSingleWidget {
     border: round $accent;
 }
 
+PlaylistCatalog {
+    height: auto;
+}
+
 DownloadPlaylistWidget{
     padding: 0 2;
     border: round $accent;
