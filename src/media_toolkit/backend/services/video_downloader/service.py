@@ -26,7 +26,7 @@ class VideoDownloader(YoutubeBase):
             'noplaylist': not download_info.is_playlist,
             'outtmpl': self._create_download_path(),
             'progress_hooks': [self._progress_hook, self._stop_hook],
-            'postprocessor_hooks': [self._postprocessor_hook, self._stop_hook],
+            'postprocessor_hooks': [self._stop_hook],
             'merge_output_format': self.format,
             'postprocessors': [
                 {

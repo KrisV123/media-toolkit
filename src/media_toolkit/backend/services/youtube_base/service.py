@@ -4,6 +4,7 @@ from urllib.parse import urlparse, parse_qs
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 
+from media_toolkit.backend.event_bus import EventBus, Events
 from media_toolkit.backend.services.type import StoppedService, ServiceError
 from media_toolkit.type import DownloadInfo, DOWNLOAD_FOLDER
 
@@ -24,6 +25,7 @@ class YoutubeBase(ABC):
         self.output_folder = DOWNLOAD_FOLDER / f'convertor_{self.id}'
         self.options: dict[str, Any] = {}
 
+        self.event_bus = EventBus()
         self.params_by_pos: dict[int | None, DownloadParams] = {}
         "None for single video"
 
@@ -76,9 +78,16 @@ class YoutubeBase(ABC):
         self.progress_dict = d
         info = d.get('info_dict') or {}
         self._collect_video_params(info)
+        self.event_bus.publish(Events.UPDATED_PROGRESS)
 
     def _postprocessor_hook(self, d: dict[str, Any]) -> None:
+        """
+        currently not used, only alternate to _progress_hook,
+        if it needs to be used in postprocessor
+        """
+
         self.progress_dict = d
+        self.event_bus.publish(Events.UPDATED_PROGRESS)
 
     def _stop_hook(self, d: dict[str, Any]) -> Any:
         if self.stop_event:

@@ -1,14 +1,14 @@
 import shutil
 import gc
-from typing import Any
+from typing import Any, overload, Literal
 
 from media_toolkit.type import DownloadInfo
 from media_toolkit.protocols import TaskSupportsCollection
-from media_toolkit.task_types import TaskState, DownloadState
+from media_toolkit.task_types import TaskState, DownloadState, ProgressState, EstimProgressState
 
 from media_toolkit.backend import Task, TaskError
 from media_toolkit.backend.event_bus import Events
-from media_toolkit.backend.task_base import Task, TaskState, ProgressState, TaskError
+from media_toolkit.backend.task_base import Task, TaskState, TaskError
 from media_toolkit.backend.services.type import StoppedService
 
 from .service import YoutubeBase
@@ -26,6 +26,15 @@ class YoutubeBaseTask[ServiceT: YoutubeBase](Task, TaskSupportsCollection):
         self._playlist_items: list[str | None] = []
         self._metadata: dict[str, Any] | None = None
         self._meta_exception: Exception | None = None
+
+        self._progress = (ProgressState(None, None, None), DownloadState.INIT)
+
+        progress_event = Events.UPDATED_PROGRESS
+        service_event_bus = self._service.event_bus
+        service_event_bus.subscribe(progress_event, self.progress_event)
+
+    def progress_event(self) -> None:
+        self._progress = self._video_progress_state(self._service.progress_dict)
 
     @property
     def title(self) -> str:
@@ -130,12 +139,13 @@ class YoutubeBaseTask[ServiceT: YoutubeBase](Task, TaskSupportsCollection):
         """snapshot of current progress state"""
 
         status = d.get('status')
+        speed = d.get('speed')
         if status == 'finished':
-            return ProgressState(10, 10), DownloadState.FINISHED
+            return ProgressState(10, 10, speed), DownloadState.FINISHED
 
         done = d.get('downloaded_bytes')
         total = d.get('total_bytes') or d.get('total_bytes_estimate')
-        progress_obj = ProgressState(done, total)
+        progress_obj = ProgressState(done, total, speed)
 
         match status:
             case 'downloading':
@@ -145,17 +155,29 @@ class YoutubeBaseTask[ServiceT: YoutubeBase](Task, TaskSupportsCollection):
             case _:
                 return progress_obj, DownloadState.DOWNLOADING
 
-    def current_video_progress(self) -> tuple[ProgressState, DownloadState]:
-        """
-        returns progress of current downloaded video.
-        If single video is downloaded, works same as progress.
-        """
+    @overload
+    def get_current_video_progress(self, estimate: Literal[True]=True) -> tuple[EstimProgressState, DownloadState]: ...
+    @overload
+    def get_current_video_progress(self, estimate: Literal[False]) -> tuple[ProgressState, DownloadState]: ...
 
-        return self._video_progress_state(self._service.progress_dict)
+    def get_current_video_progress(self, estimate: bool=True) -> tuple[ProgressState | EstimProgressState, DownloadState]:
+        if estimate:
+            return self._progress
+        progress, state = self._progress
+        return progress.estim_progress(), state
 
-    def progress(self) -> ProgressState:
+    @overload
+    def get_progress(self, estimate: Literal[True]=True) -> EstimProgressState: ...
+    @overload
+    def get_progress(self, estimate: Literal[False]) -> ProgressState: ...
+
+    def get_progress(self, estimate: bool=True) -> ProgressState | EstimProgressState:
         d = self._service.progress_dict
+        speed = d.get('speed')
+        video_progress: ProgressState | EstimProgressState
         video_progress, _ = self._video_progress_state(d)
+        if estimate:
+            video_progress = video_progress.estim_progress()
 
         if not self._service.is_playlist:
             return video_progress
@@ -163,11 +185,19 @@ class YoutubeBaseTask[ServiceT: YoutubeBase](Task, TaskSupportsCollection):
         info = d.get('info_dict') or {}
         entries = info.get('n_entries')
         pos = info.get('playlist_autonumber')
+
         if entries is None or pos is None:
-            return ProgressState(None, None)
+            if isinstance(video_progress, ProgressState):
+                return ProgressState(None, None, speed)
+            else:
+                return EstimProgressState(None, None, speed)
 
         fract = 0.0
         if video_progress.current is not None and video_progress.total:
             video_fract = video_progress.current / video_progress.total
             fract = min(video_fract, 1.0)
-        return ProgressState(pos - 1 + fract, entries)
+
+        if isinstance(video_progress, ProgressState):
+            return ProgressState(pos - 1 + fract, entries, speed)
+        else:
+            return EstimProgressState(pos - 1 + fract, entries, speed)

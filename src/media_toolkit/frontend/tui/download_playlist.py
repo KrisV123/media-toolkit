@@ -12,7 +12,7 @@ from dataclasses import dataclass
 
 from media_toolkit.backend import Events
 from media_toolkit.protocols import TaskSupportsCollection
-from media_toolkit.task_types import ProgressState, TaskState, DownloadState
+from media_toolkit.task_types import EstimProgressState, TaskState, DownloadState
 
 from .download_helpers import DownloadLabels, Progress, ICONS
 from .messages import Changed
@@ -65,15 +65,13 @@ class PlaylistCatalog(Widget):
     def _on_mount(self, event: Mount) -> None:
         if len(self.backend_task.playlist_items) == 0:
             meta_event = Events.CHANGED_META
-            self.backend_task.event_bus.subscribe(meta_event, self.start_tick)
+            self.backend_task.event_bus.subscribe_once(meta_event, self.start_tick)
         else:
             self.start_tick()
 
     def start_tick(self):
-        meta_event = Events.CHANGED_META
-        self.backend_task.event_bus.unsubscribe(meta_event, self.start_tick)
         self.load_data()
-        self._timer = self.set_interval(0.25, self.update_data)
+        self._timer = self.set_interval(0.1, self.update_data)
 
     def load_data(self) -> None:
         self.download_data = [
@@ -90,7 +88,7 @@ class PlaylistCatalog(Widget):
             return
 
         is_dirty_set: set[bool] = set()
-        progress, video_status = self.backend_task.current_video_progress()
+        progress, video_status = self.backend_task.get_current_video_progress()
         is_dirty_set.add(self.update_percentage(ord, progress))
         is_dirty_set.add(self.update_video_end(ord, video_status))
 
@@ -109,7 +107,7 @@ class PlaylistCatalog(Widget):
             return True
         return False
 
-    def update_percentage(self, ord: int, progress: ProgressState) -> bool:
+    def update_percentage(self, ord: int, progress: EstimProgressState) -> bool:
         if progress.total is not None and progress.current:
             progress_num = int((progress.current / progress.total) * 100)
             curr_progress_num = self.download_data[ord].percentage

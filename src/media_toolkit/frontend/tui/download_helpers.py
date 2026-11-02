@@ -11,6 +11,9 @@ from media_toolkit.type import VIDEO_FORMATS
 from media_toolkit.protocols import TaskSupportBasics
 from media_toolkit.task_types import TaskState
 
+import logging
+LOGGER = logging.getLogger(__name__)
+
 ICONS = {
     TaskState.NOT_READY: '🟡',
     TaskState.READY: '▶',
@@ -118,10 +121,11 @@ class Progress(Static):
 
     def on_mount(self, event: Mount) -> None:
         self.progress_bar = self.query_one('#progress-bar', ProgressBar)
-        self._timer = self.set_interval(0.3, self.update_progress_bar)
+        self._timer = self.set_interval(0.1, self.update_progress_bar)
 
     def update_progress_bar(self) -> None:
-        state = self.backend_task.progress()
+        state = self.backend_task.get_progress()
+
         if state.current is None:
             self.progress_bar.update(total=state.total)
         else:

@@ -1,6 +1,6 @@
 from collections import defaultdict
 from collections.abc import Callable
-from typing import Generic, ParamSpec
+from typing import Generic, ParamSpec, cast
 
 P = ParamSpec('P')
 
@@ -19,26 +19,46 @@ class Event(Generic[P]):
 class Events:
     CHANGED_META = Event[[]]('changed_meta')
     UPDATE_TASK_STATUS = Event[[]]('update_task_status')
+    UPDATED_PROGRESS = Event[[]]('updated_progress')
 
 
 class EventBus:
     def __init__(self) -> None:
-        self.subscribers: defaultdict[Event, set[Callable[..., None]]] = defaultdict(set)
+        self._subscribers: defaultdict[Event, set[Callable[..., None]]] = defaultdict(set)
+        self._once: defaultdict[Event, set[Callable[..., None]]] = defaultdict(set)
 
     def subscribe(self, event: Event[P], cb: Callable[P, None]) -> None:
         """subscribe callable on given event"""
 
-        self.subscribers[event].add(cb)
+        self._subscribers[event].add(cb)
+
+    def subscribe_once(self, event: Event[P], cb: Callable[P, None]) -> None:
+        """
+        subscribe callable on given event, that automaticly removes after execution./n
+        Handle for registered callable is returned./n/n
+        Input callable and registered callable is not the same !
+        """
+
+        self._subscribers[event].add(cb)
+        self._once[event].add(cb)
 
     def unsubscribe(self, event: Event[P], cb: Callable[P, None]) -> None:
-        """unsubsctibe callable in given event"""
+        """unsubsctibe callable in given event. Does nothing, if event is not registered"""
 
-        register = self.subscribers.get(event)
+        register = self._subscribers.get(event)
         if register:
             register.discard(cb)
+        register_once = self._once.get(event)
+        if register_once:
+            register_once.discard(cb)
 
     def publish(self, event: Event[P], *args: P.args, **kwargs: P.kwargs) -> None:
-        register = self.subscribers.get(event)
+        """run all callable objects registered to current event with given params"""
+
+        register = self._subscribers.get(event)
         if register:
+            once = self._once.get(event, set())
             for cb in tuple(register):
+                if cb in once:
+                    self.unsubscribe(event, cast(Callable[P, None], cb))
                 cb(*args, **kwargs)

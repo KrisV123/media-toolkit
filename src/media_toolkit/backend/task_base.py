@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from media_toolkit.backend.event_bus import EventBus
 
 from media_toolkit.type import DownloadInfo
-from media_toolkit.task_types import TaskState, ProgressState
+from media_toolkit.task_types import TaskState
 
 class TaskError(Exception):
     pass
@@ -63,7 +63,3 @@ class Task(ABC):
     @abstractmethod
     def cancel(self) -> None:
         """clean garbage left behind (temporary files), reset states, ect."""
-
-    @abstractmethod
-    def progress(self) -> ProgressState:
-        """return current progress state of whole service workload"""
