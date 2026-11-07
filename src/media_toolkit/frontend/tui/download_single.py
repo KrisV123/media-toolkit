@@ -6,7 +6,7 @@ from media_toolkit.task_types import TaskState
 from media_toolkit.backend import Events
 
 from .download_helpers import DownloadLabels, Progress, ICONS
-from .messages import Changed
+from .messages import Changed, UpdateBorderTitle
 from ...protocols import TaskSupportBasics
 
 from collections.abc import Iterable
@@ -24,15 +24,19 @@ class DownloadSingleWidget(Static):
         yield DownloadLabels(self.backend_task)
         yield Progress(self.backend_task)
 
+    def post_update_border_title(self) -> None:
+        self.post_message(UpdateBorderTitle())
+
     def on_mount(self) -> None:
+        meta_event = Events.CHANGED_META
+        self.backend_task.event_bus.subscribe(meta_event, self.post_update_border_title)
+        status_event = Events.UPDATE_TASK_STATUS
+        self.backend_task.event_bus.subscribe(status_event, self.post_update_border_title)
+
         self.border_title = f'{ICONS[self.backend_task.status]}  {self.backend_task.title}'
         self.border_subtitle = str(self.backend_task.id)
-        meta_event = Events.CHANGED_META
-        self.backend_task.event_bus.subscribe(meta_event, self.update_border_title)
-        status_event = Events.UPDATE_TASK_STATUS
-        self.backend_task.event_bus.subscribe(status_event, self.update_border_title)
 
-    def update_border_title(self) -> None:
+    def on_update_border_title(self) -> None:
         current_state_emoji = ICONS[self.backend_task.status]
         self.border_title = f'{current_state_emoji}  {self.backend_task.title}'
 

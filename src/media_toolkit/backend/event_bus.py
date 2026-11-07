@@ -1,6 +1,7 @@
 from collections import defaultdict
 from collections.abc import Callable
 from typing import Generic, ParamSpec, cast
+from threading import Lock
 
 P = ParamSpec('P')
 
@@ -26,11 +27,13 @@ class EventBus:
     def __init__(self) -> None:
         self._subscribers: defaultdict[Event, set[Callable[..., None]]] = defaultdict(set)
         self._once: defaultdict[Event, set[Callable[..., None]]] = defaultdict(set)
+        self._lock = Lock()
 
     def subscribe(self, event: Event[P], cb: Callable[P, None]) -> None:
         """subscribe callable on given event"""
 
-        self._subscribers[event].add(cb)
+        with self._lock:
+            self._subscribers[event].add(cb)
 
     def subscribe_once(self, event: Event[P], cb: Callable[P, None]) -> None:
         """
@@ -39,26 +42,28 @@ class EventBus:
         Input callable and registered callable is not the same !
         """
 
-        self._subscribers[event].add(cb)
-        self._once[event].add(cb)
+        with self._lock:
+            self._subscribers[event].add(cb)
+            self._once[event].add(cb)
 
     def unsubscribe(self, event: Event[P], cb: Callable[P, None]) -> None:
         """unsubsctibe callable in given event. Does nothing, if event is not registered"""
 
-        register = self._subscribers.get(event)
-        if register:
-            register.discard(cb)
-        register_once = self._once.get(event)
-        if register_once:
-            register_once.discard(cb)
+        with self._lock:
+            self._subscribers.get(event, set()).discard(cb)
+            self._once.get(event, set()).discard(cb)
 
     def publish(self, event: Event[P], *args: P.args, **kwargs: P.kwargs) -> None:
         """run all callable objects registered to current event with given params"""
 
-        register = self._subscribers.get(event)
-        if register:
-            once = self._once.get(event, set())
-            for cb in tuple(register):
-                if cb in once:
-                    self.unsubscribe(event, cast(Callable[P, None], cb))
-                cb(*args, **kwargs)
+        with self._lock:
+            callbacks = tuple(self._subscribers.get(event, set()))
+            if callbacks:
+                once = self._once.get(event, set())
+                for cb in callbacks:
+                    if cb in once:
+                        once.discard(cb)
+                        self._subscribers[event].discard(cb)
+
+        for cb in callbacks:
+            cb(*args, **kwargs)

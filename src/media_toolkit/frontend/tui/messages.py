@@ -12,3 +12,6 @@ class Restart(Message):
     def __init__(self, download_info: DownloadInfo):
         super().__init__()
         self.download_info = download_info
+
+class UpdateBorderTitle(Message): ...
+class StartTick(Message): ...

@@ -15,7 +15,7 @@ from media_toolkit.protocols import TaskSupportsCollection
 from media_toolkit.task_types import EstimProgressState, TaskState, DownloadState
 
 from .download_helpers import DownloadLabels, Progress, ICONS
-from .messages import Changed
+from .messages import Changed, UpdateBorderTitle, StartTick
 
 SOLO_ICONS = {
     DownloadState.DOWNLOADING: '⌛',
@@ -62,14 +62,17 @@ class PlaylistCatalog(Widget):
         right_part = Strip((Segment(fallback_text),))
         return Strip.join((left_part, right_part)).apply_style(base_style)
 
+    def post_start_tick(self) -> None:
+        self.post_message(StartTick())
+
     def _on_mount(self, event: Mount) -> None:
         if len(self.backend_task.playlist_items) == 0:
             meta_event = Events.CHANGED_META
-            self.backend_task.event_bus.subscribe_once(meta_event, self.start_tick)
+            self.backend_task.event_bus.subscribe_once(meta_event, self.post_start_tick)
         else:
-            self.start_tick()
+            self.on_start_tick()
 
-    def start_tick(self):
+    def on_start_tick(self):
         self.load_data()
         self._timer = self.set_interval(0.1, self.update_data)
 
@@ -141,15 +144,19 @@ class DownloadPlaylistWidget(Static):
         yield Progress(self.backend_task)
         yield PlaylistCatalog(self.backend_task)
 
+    def post_update_border_title(self) -> None:
+        self.post_message(UpdateBorderTitle())
+
     def on_mount(self) -> None:
+        meta_event = Events.CHANGED_META
+        self.backend_task.event_bus.subscribe(meta_event, self.post_update_border_title)
+        status_event = Events.UPDATE_TASK_STATUS
+        self.backend_task.event_bus.subscribe(status_event, self.post_update_border_title)
+
         self.border_title = f'{ICONS[self.backend_task.status]}  {self.backend_task.title}'
         self.border_subtitle = str(self.backend_task.id)
-        meta_event = Events.CHANGED_META
-        self.backend_task.event_bus.subscribe(meta_event, self.update_border_title)
-        status_event = Events.UPDATE_TASK_STATUS
-        self.backend_task.event_bus.subscribe(status_event, self.update_border_title)
 
-    def update_border_title(self) -> None:
+    def on_update_border_title(self) -> None:
         current_state_emoji = ICONS[self.backend_task.status]
         self.border_title = f'{current_state_emoji}  {self.backend_task.title}'
 
