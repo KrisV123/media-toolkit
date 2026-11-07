@@ -162,9 +162,9 @@ class YoutubeBaseTask[ServiceT: YoutubeBase](Task, TaskSupportsCollection):
 
     def get_current_video_progress(self, estimate: bool=True) -> tuple[ProgressState | EstimProgressState, DownloadState]:
         if estimate:
-            return self._progress
-        progress, state = self._progress
-        return progress.estim_progress(), state
+            progress, state = self._progress
+            return progress.estim_progress(), state
+        return self._progress
 
     @overload
     def get_progress(self, estimate: Literal[True]=True) -> EstimProgressState: ...
@@ -175,7 +175,7 @@ class YoutubeBaseTask[ServiceT: YoutubeBase](Task, TaskSupportsCollection):
         d = self._service.progress_dict
         speed = d.get('speed')
         video_progress: ProgressState | EstimProgressState
-        video_progress, _ = self._video_progress_state(d)
+        video_progress, _ = self._progress
         if estimate:
             video_progress = video_progress.estim_progress()
 
