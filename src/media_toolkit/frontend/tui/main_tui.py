@@ -4,6 +4,7 @@ from textual.widgets import Header, Footer, Static, Input, Button, Select, Label
 from textual.widget import Widget
 from textual.containers import ScrollableContainer
 from textual.types import NoSelection
+from textual.binding import Binding
 
 from collections.abc import Iterable
 from urllib.parse import urlsplit
@@ -117,6 +118,10 @@ class InputEntry(Static):
 
 
 class InputBar(Static):
+    BINDINGS = [
+        Binding("space", "convert", "Convert", priority=True)
+    ]
+
     def compose(self) -> Iterable[Widget]:
         yield InputEntry()
         yield InputFormats()
@@ -134,6 +139,14 @@ class InputBar(Static):
             audio_quality=extra_input_settings.get_audio_quality(),
             video_quality=extra_input_settings.get_video_quality()
         )
+
+    def action_convert(self) -> None:
+        convert_button = self.query_one('#url_enter', Button)
+        convert_button.press()
+
+    def on_input_submitted(self, event: Input.Submitted) -> None:
+        self.action_convert()
+
 
 
 class ErrorWidget(Static):
@@ -226,3 +239,6 @@ class YtConvertorApp(App):
         yield Header()
         yield MainFrame()
         yield Footer()
+
+    def on_mount(self) -> None:
+        self.query_one('#url_enter', Button).focus()

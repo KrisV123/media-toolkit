@@ -1,3 +1,4 @@
+from textual import on
 from textual.events import Mount
 from textual.widgets import Static, Label, Button, ProgressBar
 from textual.widget import Widget
@@ -13,6 +14,12 @@ from media_toolkit.task_types import TaskState
 
 import logging
 LOGGER = logging.getLogger(__name__)
+
+class DownloadWidgetsBindings():
+    BINDINGS = [
+        ('up', '')
+    ]
+
 
 ICONS = {
     TaskState.NOT_READY: '🟡',
@@ -73,44 +80,46 @@ class ProgressButtons(Static):
         yield Button(label='pause', compact=True, id='pause_resume_restart')
         yield Button(label='stop', compact=True, id='stop')
 
-    async def on_button_pressed(self, event: Button.Pressed) -> None:
+    @on(Button.Pressed, '#pause_resume_restart')
+    async def on_pause_resume_restart(self, event: Button.Pressed) -> None:
         button = event.button
         manager = TaskManager()
 
-        if button.id == 'pause_resume_restart':
-            button.disabled = True
-            if button.has_class('restart'):
-                self.post_message(Restart(self.backend_task.download_info))
-            elif button.has_class('is_paused'):
-                button.remove_class('is_paused')
-                button.label = 'pause'
-                await manager.resume_task(self.backend_task.id)
-                self.post_message(Changed(TaskState.IN_PROCESS))
-            else:
-                button.add_class('is_paused')
-                button.label = 'resume'
-                await manager.pause_task(self.backend_task.id)
-                self.post_message(Changed(TaskState.PAUSED))
-            button.disabled = False
+        button.disabled = True
+        if button.has_class('restart'):
+            self.post_message(Restart(self.backend_task.download_info))
+        elif button.has_class('is_paused'):
+            button.remove_class('is_paused')
+            button.label = 'pause'
+            await manager.resume_task(self.backend_task.id)
+            self.post_message(Changed(TaskState.IN_PROCESS))
+        else:
+            button.add_class('is_paused')
+            button.label = 'resume'
+            await manager.pause_task(self.backend_task.id)
+            self.post_message(Changed(TaskState.PAUSED))
+        button.disabled = False
 
-        elif button.id == 'stop':
-            button.disabled = True
-            button.label = 'stopped'
+    @on(Button.Pressed, '#stop')
+    async def on_stop(self, event: Button.Pressed) -> None:
+        button = event.button
 
-            restart_button = self.query_one('#pause_resume_restart', Button)
-            restart_button.disabled = True
-            if restart_button.has_class('is_paused'):
-                restart_button.remove_class('is_paused')
-            restart_button.add_class('restart')
-            restart_button.label = 'restart'
+        button.disabled = True
+        button.label = 'stopped'
 
-            await manager.stop_task(self.backend_task.id)
-            self.post_message(Changed(TaskState.CANCELLED))
-            restart_button.disabled = False
+        restart_button = self.query_one('#pause_resume_restart', Button)
+        restart_button.disabled = True
+        if restart_button.has_class('is_paused'):
+            restart_button.remove_class('is_paused')
+        restart_button.add_class('restart')
+        restart_button.label = 'restart'
+
+        await TaskManager().stop_task(self.backend_task.id)
+        self.post_message(Changed(TaskState.CANCELLED))
+        restart_button.disabled = False
 
 
 class Progress(Static):
-
     def __init__(self, backend_task: TaskSupportBasics):
         super().__init__()
         self.backend_task = backend_task
@@ -122,6 +131,7 @@ class Progress(Static):
     def on_mount(self, event: Mount) -> None:
         self.progress_bar = self.query_one('#progress-bar', ProgressBar)
         self._timer = self.set_interval(0.1, self.update_progress_bar)
+        self._is_timer_paused = False
 
     def update_progress_bar(self) -> None:
         state = self.backend_task.get_progress()
@@ -134,6 +144,7 @@ class Progress(Static):
         status = self.backend_task.status
         if status in (TaskState.FINISHED, TaskState.FAIL, TaskState.CANCELLED):
             self._timer.stop()
+            self._is_timer_paused = True
             self.post_message(Changed(status))
             if self.progress_bar.total is None:
                 self.progress_bar.update(total=1)
