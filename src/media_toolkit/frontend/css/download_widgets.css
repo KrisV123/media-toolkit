@@ -1,3 +1,7 @@
+DownloadItem:focus {
+    border: double $accent
+}
+
 DownloadLabels {
     layout: horizontal;
     padding: 1;

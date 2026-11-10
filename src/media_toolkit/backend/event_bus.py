@@ -1,6 +1,6 @@
 from collections import defaultdict
 from collections.abc import Callable
-from typing import Generic, ParamSpec, cast
+from typing import Generic, ParamSpec
 from threading import Lock
 
 P = ParamSpec('P')

@@ -1,47 +1,15 @@
-from textual.widgets import Static, Label
-from textual.widget import Widget
+from textual.widgets import Label
 
 from media_toolkit.task_types import TaskState
+from media_toolkit.protocols import TaskSupportBasics
 
-from media_toolkit.backend import Events
+from .download_helpers import DownloadLabels, DownloadItem
+from .messages import TaskStatusChanged
 
-from .download_helpers import DownloadLabels, Progress, ICONS
-from .messages import Changed, UpdateBorderTitle
-from ...protocols import TaskSupportBasics
 
-from collections.abc import Iterable
-
-class DownloadSingleWidget(Static):
-    def __init__(self, backend_task: TaskSupportBasics):
-        super().__init__()
-        download_info = backend_task.download_info
-        self.format = download_info.format
-        self.audio_quality = download_info.audio_quality
-        self.video_quality = download_info.video_quality
-        self.backend_task = backend_task
-
-    def compose(self) -> Iterable[Widget]:
-        yield DownloadLabels(self.backend_task)
-        yield Progress(self.backend_task)
-
-    def post_update_border_title(self) -> None:
-        self.post_message(UpdateBorderTitle())
-
-    def on_mount(self) -> None:
-        meta_event = Events.CHANGED_META
-        self.backend_task.event_bus.subscribe(meta_event, self.post_update_border_title)
-        status_event = Events.UPDATE_TASK_STATUS
-        self.backend_task.event_bus.subscribe(status_event, self.post_update_border_title)
-
-        self.border_title = f'{ICONS[self.backend_task.status]}  {self.backend_task.title}'
-        self.border_subtitle = str(self.backend_task.id)
-
-    def on_update_border_title(self) -> None:
-        current_state_emoji = ICONS[self.backend_task.status]
-        self.border_title = f'{current_state_emoji}  {self.backend_task.title}'
-
-    def on_changed(self, messege: Changed) -> None:
-        status = messege.status
+class DownloadSingleWidget(DownloadItem[TaskSupportBasics]):
+    def on_task_status_changed(self, messege: TaskStatusChanged) -> None:
+        status = self.backend_task.status
         if status == TaskState.FAIL:
             self.mount(Label(f'{str(self.backend_task.fail)}'))
 

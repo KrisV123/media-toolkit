@@ -1,6 +1,6 @@
 from textual.events import Mount
 from textual.strip import Strip
-from textual.widgets import Static, Label
+from textual.widgets import Label
 from textual.widget import Widget
 
 from textual.strip import Strip
@@ -14,8 +14,8 @@ from media_toolkit.backend import Events
 from media_toolkit.protocols import TaskSupportsCollection
 from media_toolkit.task_types import EstimProgressState, TaskState, DownloadState
 
-from .download_helpers import DownloadLabels, Progress, ICONS
-from .messages import Changed, UpdateBorderTitle, StartTick
+from .download_helpers import DownloadItem
+from .messages import StartTick, TaskStatusChanged
 
 SOLO_ICONS = {
     DownloadState.DOWNLOADING: '⌛',
@@ -75,6 +75,7 @@ class PlaylistCatalog(Widget):
     def on_start_tick(self):
         self.load_data()
         self._timer = self.set_interval(0.1, self.update_data)
+        self._is_timer_paused = False
 
     def load_data(self) -> None:
         self.download_data = [
@@ -129,38 +130,26 @@ class PlaylistCatalog(Widget):
         self.download_data[ord].fallback = miss_flags
         return True
 
+    def sync_timer(self) -> None:
+        if self._timer is None:
+            return
 
-class DownloadPlaylistWidget(Static):
-    def __init__(self, backend_task: TaskSupportsCollection):
-        super().__init__()
-        download_info = backend_task.download_info
-        self.format = download_info.format
-        self.audio_quality = download_info.audio_quality
-        self.video_quality = download_info.video_quality
-        self.backend_task = backend_task
+        status = self.backend_task.status
+        if status == TaskState.PAUSED and not self._is_timer_paused:
+            self._timer.pause()
+            self._is_timer_paused = True
+        elif status in (TaskState.IN_PROCESS, TaskState.READY) and self._is_timer_paused:
+            self._timer.resume()
+            self._is_timer_paused = False
 
+
+class DownloadPlaylistWidget(DownloadItem[TaskSupportsCollection]):
     def compose(self) -> Iterable[Widget]:
-        yield DownloadLabels(self.backend_task)
-        yield Progress(self.backend_task)
+        yield from super().compose()
         yield PlaylistCatalog(self.backend_task)
 
-    def post_update_border_title(self) -> None:
-        self.post_message(UpdateBorderTitle())
-
-    def on_mount(self) -> None:
-        meta_event = Events.CHANGED_META
-        self.backend_task.event_bus.subscribe(meta_event, self.post_update_border_title)
-        status_event = Events.UPDATE_TASK_STATUS
-        self.backend_task.event_bus.subscribe(status_event, self.post_update_border_title)
-
-        self.border_title = f'{ICONS[self.backend_task.status]}  {self.backend_task.title}'
-        self.border_subtitle = str(self.backend_task.id)
-
-    def on_update_border_title(self) -> None:
-        current_state_emoji = ICONS[self.backend_task.status]
-        self.border_title = f'{current_state_emoji}  {self.backend_task.title}'
-
-    def on_changed(self, messege: Changed) -> None:
-        status = messege.status
+    def on_task_status_changed(self, messege: TaskStatusChanged) -> None:
+        self.query_one(PlaylistCatalog).sync_timer()
+        status = self.backend_task.status
         if status == TaskState.FAIL:
             self.mount(Label(f'{str(self.backend_task.fail)}'))
