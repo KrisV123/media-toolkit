@@ -25,18 +25,6 @@ class UIException(Exception):
     pass
 
 
-class ErrorWidget(Static):
-    def __init__(self, msg: str):
-        super().__init__()
-        self.msg = msg
-
-    def compose(self) -> Iterable[Widget]:
-        yield Label(content=self.msg)
-
-    def _on_mount(self, event: Mount) -> None:
-        self.border_title = "Input Error"
-
-
 class DownloadsScrollable(ScrollableContainer):
     BINDINGS = [
         Binding("up", "focus_previous", "Previous"),
@@ -103,8 +91,7 @@ class MainFrame(Static):
     async def add_download_widget(self, download_info: DownloadInfo) -> None:
         validation_msg = self.get_validation_error_msg(download_info)
         if validation_msg:
-            self.downloads_widget.mount(ErrorWidget(validation_msg))
-            self.downloads_widget.scroll_end()
+            self.notify(validation_msg, title='Input error', severity='warning')
             return
 
         manager = TaskManager()
