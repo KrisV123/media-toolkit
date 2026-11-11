@@ -1,10 +1,8 @@
 from textual import events
 from textual.app import App
-from textual.events import Mount
-from textual.widgets import Header, Footer, Static, Button, Label
+from textual.widgets import Header, Footer, Static, Button
 from textual.widget import Widget
 from textual.containers import ScrollableContainer
-from textual.binding import Binding
 
 from collections.abc import Iterable
 from urllib.parse import urlsplit
@@ -27,11 +25,13 @@ class UIException(Exception):
 
 class DownloadsScrollable(ScrollableContainer):
     BINDINGS = [
-        Binding("up", "focus_previous", "Previous"),
-        Binding("down", "focus_next", "Next"),
+        ("up", "focus_previous", "Previous"),
+        ("down", "focus_next", "Next"),
     ]
 
-    cursor = 0
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.cursor = 0
 
     def on_descendant_focus(self, event: events.DescendantFocus):
         widget = event.widget
@@ -85,8 +85,8 @@ class MainFrame(Static):
         input_bar = self.query_one(InputBar)
         download_info = input_bar.get_download_info()
         input_entry = self.query_one(InputEntry)
-        input_entry.reset_url_adress()
         await self.add_download_widget(download_info)
+        input_entry.reset_url_adress()
 
     async def add_download_widget(self, download_info: DownloadInfo) -> None:
         validation_msg = self.get_validation_error_msg(download_info)
@@ -100,14 +100,15 @@ class MainFrame(Static):
 
         if format in AUDIO_FORMATS:
             audio_task = await manager.register(AudioDownloaderTask, download_info)
-            self.downloads_widget.mount(widget(audio_task))
+            new_widget = widget(audio_task)
+            self.downloads_widget.mount(new_widget)
         elif format in VIDEO_FORMATS:
             video_task = await manager.register(VideoDownloaderTask, download_info)
-            self.downloads_widget.mount(widget(video_task))
+            new_widget = widget(video_task)
+            self.downloads_widget.mount(new_widget)
         else:
             raise UIException("service for current format does not exist or is not registered")
-
-        self.downloads_widget.scroll_end()
+            
 
     def is_url(self, url: str) -> bool:
         try:

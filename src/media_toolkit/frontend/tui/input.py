@@ -1,3 +1,4 @@
+from textual import events
 from textual.widgets import Static, Input, Button, Select
 from textual.widget import Widget
 from textual.types import NoSelection
@@ -9,6 +10,15 @@ from media_toolkit.type import DownloadInfo
 from .messages import ConvertRequested
 
 class InputFormats(Static):
+    BINDINGS = [
+        ('left', 'left', 'Left'),
+        ('right', 'right', 'Right')
+    ]
+
+    def __init__(self):
+        super().__init__()
+        self.cursor = 0
+
     def compose(self) -> Iterable[Widget]:
         yield Button(label='MP3', id='mp3')
         yield Button(label='MP4', id='mp4')
@@ -28,19 +38,51 @@ class InputFormats(Static):
                 return button.id
         return ""
 
+    def on_descendant_focus(self, event: events.DescendantFocus):
+        widget = event.widget
+        if isinstance(widget, Button):
+            items = list(self.query(Button))
+            self.cursor = items.index(widget)
+
+    def _move(self, step: int) -> None:
+        items = list(self.query(Button))
+        if not items:
+            return
+        self.cursor = max(0, min(self.cursor + step, len(items) - 1))
+        items[self.cursor].focus()
+
+    def action_left(self) -> None:
+        self._move(-1)
+
+    def action_right(self) -> None:
+        self._move(+1)
+
+
+class QualitySelect[T](Select[T], inherit_bindings=False):
+    BINDINGS = [
+        Binding("enter", "show_overlay", "Show menu", show=False),
+    ]
+
 
 class ExtraInputSettings(Static):
+    BINDINGS = [
+        ('left', 'left', 'Left'),
+        ('right', 'right', 'Right')
+    ]
+
     audio_quality = [
         "32 kbps", "48 kbps", "64 kbps", "80 kbps",
         "96 kbps", "112 kbps", "128 kbps", "160 kbps",
         "192 kbps", "224 kbps", "256 kbps", "320 kbps",
     ]
-    video_quality = [
-        "480p", "720p", "1080p", "1440p", "2160p"
-    ]
+    video_quality = ["480p", "720p", "1080p", "1440p", "2160p"]
+
+    def __init__(self):
+        super().__init__()
+        self.cursor = 0
 
     def compose(self) -> Iterable[Widget]:
-        yield Select[str](
+        yield QualitySelect[str](
             options=[
                 (quality , quality)
                 for quality in self.audio_quality
@@ -48,7 +90,7 @@ class ExtraInputSettings(Static):
             prompt='audio quality',
             id='audio_quality'
         )
-        yield Select[str](
+        yield QualitySelect[str](
             options=[(quality, quality) for quality in self.video_quality],
             prompt='video quality',
             id='video_quality'
@@ -76,6 +118,25 @@ class ExtraInputSettings(Static):
         value = select.value
         return self.video_quality[-1] if isinstance(value, NoSelection) else value
 
+    def on_descendant_focus(self, event: events.DescendantFocus):
+        widget = event.widget
+        if isinstance(widget, Select | Button):
+            items = list(self.query("Select, Button"))
+            self.cursor = items.index(widget)
+
+    def _move(self, step: int) -> None:
+        items = list(self.query("Select, Button"))
+        if not items:
+            return
+        self.cursor = max(0, min(self.cursor + step, len(items) - 1))
+        items[self.cursor].focus()
+
+    def action_left(self) -> None:
+        self._move(-1)
+
+    def action_right(self) -> None:
+        self._move(+1)
+
 
 class InputEntry(Static):
     def compose(self) -> Iterable[Widget]:
@@ -99,14 +160,19 @@ class InputEntry(Static):
 class InputBar(Static):
     can_focus = True
 
+    def __init__(self):
+        super().__init__()
+        self.cursor = 0
+
     BINDINGS = [
-        Binding("space", "convert", "Convert", priority=True)
+        Binding('up', 'up', 'Up'),
+        Binding('down', 'down', 'Down'),
+        Binding('space', 'convert', 'Convert', priority=True)
     ]
 
     def compose(self) -> Iterable[Widget]:
-        yield InputEntry()
-        yield InputFormats()
-        yield ExtraInputSettings()
+        self._groups: list[Widget] = [InputEntry(), InputFormats(), ExtraInputSettings()]
+        yield from self._groups
 
     def get_download_info(self) -> DownloadInfo:
         input_entry = self.query_one(InputEntry)
@@ -127,3 +193,21 @@ class InputBar(Static):
 
     def on_input_submitted(self, event: Input.Submitted) -> None:
         self.action_convert()
+
+    def on_descendant_focus(self, event: events.DescendantFocus):
+        widget = event.widget
+        for index, group in enumerate(self._groups):
+            if widget in group.ancestors:
+                self.cursor = index
+                break
+
+    def _move(self, step: int) -> None:
+        groups = self._groups
+        self.cursor = max(0, min(self.cursor + step, len(groups) - 1))
+        groups[self.cursor].query("Input, Select, Button").first().focus()
+
+    def action_up(self) -> None:
+        self._move(-1)
+
+    def action_down(self) -> None:
+        self._move(+1)
