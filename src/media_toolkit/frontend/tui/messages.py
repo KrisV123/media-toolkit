@@ -1,7 +1,7 @@
 from textual.message import Message
 from media_toolkit.type import DownloadInfo
 
-class Restart(Message):
+class RestartRequested(Message):
     def __init__(self, download_info: DownloadInfo):
         super().__init__()
         self.download_info = download_info

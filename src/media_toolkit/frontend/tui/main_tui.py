@@ -19,7 +19,7 @@ from .download_single import DownloadSingleWidget
 from .download_playlist import DownloadPlaylistWidget
 from .download_helpers import DownloadItem
 from .input import InputBar, InputEntry
-from .messages import Restart, ConvertRequested
+from .messages import RestartRequested, ConvertRequested
 
 class UIException(Exception):
     pass
@@ -48,8 +48,8 @@ class DownloadsScrollable(ScrollableContainer):
     def on_descendant_focus(self, event: events.DescendantFocus):
         widget = event.widget
         if isinstance(widget, DownloadItem):
-            itmes = list(self.query(DownloadItem))
-            self.cursor = itmes.index(widget)
+            items = list(self.query(DownloadItem))
+            self.cursor = items.index(widget)
 
     def _move(self, step: int) -> None:
         items = list(self.query(DownloadItem))
@@ -93,7 +93,7 @@ class MainFrame(Static):
         else:
             self.input_bar.focus()
 
-    async def on_convert_requested(self, messege: ConvertRequested) -> None:
+    async def on_convert_requested(self, message: ConvertRequested) -> None:
         input_bar = self.query_one(InputBar)
         download_info = input_bar.get_download_info()
         input_entry = self.query_one(InputEntry)
@@ -129,12 +129,12 @@ class MainFrame(Static):
                 parsed.scheme in ('http', 'https') and
                 bool(parsed.hostname)
             )
-        except:
+        except ValueError:
             return False
 
     def get_validation_error_msg(self, download_info: DownloadInfo) -> str | None:
         if download_info.link == "":
-            return "Missing ulr link"
+            return "Missing url link"
         elif not self.is_url(download_info.link):
             return "url link is not valid"
         elif download_info.widget_name == "":
@@ -144,8 +144,6 @@ class MainFrame(Static):
                 return "Format is not selected"
             else:
                 return "service for current format does not exist or is not registered"
-        elif download_info.format == "":
-            return "Format is not selected"
         elif download_info.format in VIDEO_FORMATS and download_info.video_quality == "":
             return "For video format, video quality have to be selected"
         elif download_info.audio_quality == "":
@@ -153,7 +151,7 @@ class MainFrame(Static):
 
         return None
 
-    async def on_restart(self, message: Restart):
+    async def on_restart_requested(self, message: RestartRequested):
         await self.add_download_widget(message.download_info)
 
 

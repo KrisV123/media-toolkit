@@ -11,7 +11,7 @@ from media_toolkit.type import VIDEO_FORMATS
 from media_toolkit.protocols import TaskSupportBasics
 from media_toolkit.task_types import TaskState
 
-from .messages import UpdateBorderTitle, Restart, TaskStatusChanged
+from .messages import UpdateBorderTitle, RestartRequested, TaskStatusChanged
 
 import logging
 LOGGER = logging.getLogger(__name__)
@@ -79,7 +79,7 @@ class ProgressButtons(Static):
         manager = TaskManager()
         button.disabled = True
         if button.has_class('restart'):
-            self.post_message(Restart(self.backend_task.download_info))
+            self.post_message(RestartRequested(self.backend_task.download_info))
         elif button.has_class('is_paused'):
             button.remove_class('is_paused')
             button.label = 'pause'
