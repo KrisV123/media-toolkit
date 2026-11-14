@@ -22,6 +22,7 @@ class YoutubeBaseTask[ServiceT: YoutubeBase](Task, TaskSupportsCollection):
         self._service = service(download_info, id)
         self._exception: Exception | None = None
         self._change_status(TaskState.NOT_READY)
+        self._setupped = False
         self._title: str = "..."
         self._playlist_items: list[str | None] = []
         self._metadata: dict[str, Any] | None = None
@@ -86,6 +87,10 @@ class YoutubeBaseTask[ServiceT: YoutubeBase](Task, TaskSupportsCollection):
         self._metadata = info
 
     def setup(self) -> bool:
+        if self._setupped:
+            LOGGER.debug(f'Task is already setupped. Operation skipped')
+            return True
+
         try:
             self._service.validate()
         except Exception as e:
@@ -94,10 +99,19 @@ class YoutubeBaseTask[ServiceT: YoutubeBase](Task, TaskSupportsCollection):
             return False
 
         self._exception = None
-        self._change_status(TaskState.READY)
+        self._setupped = True
+        if self.status == TaskState.NOT_READY:
+            self._change_status(TaskState.READY)
         return True
 
     def start(self) -> None:
+        if self.status != TaskState.READY:
+            if self.status == TaskState.PAUSED:
+                LOGGER.debug(f'Trying to start task that is paused. Execution skipped')
+                return
+            else:
+                raise TaskError(f'Task that is not READY or PAUSED can not be started')
+
         try:
             if self._metadata is None:
                 raise TaskError(f'get_metadata routine did not finished properly. Routine error: {self._meta_exception}')
@@ -105,21 +119,26 @@ class YoutubeBaseTask[ServiceT: YoutubeBase](Task, TaskSupportsCollection):
             self._service.download(self._metadata)
             self._change_status(TaskState.FINISHED)
         except StoppedService:
-            self._change_status(TaskState.PAUSED)
+            if self.status != TaskState.PAUSED:
+                self._change_status(TaskState.PAUSED)
         except Exception as e:
-            self._change_status(TaskState.FAIL)
             self._exception = e
+            self._change_status(TaskState.FAIL)
 
     def stop(self) -> None:
-        if self.status in (TaskState.FINISHED, TaskState.FAIL, TaskState.PAUSED):
+        if self.status in (TaskState.FINISHED, TaskState.FAIL, TaskState.PAUSED, TaskState.CANCELLED):
             return
         self._service.stop_event = True
+        self._change_status(TaskState.PAUSED)
 
     def prepare_resume(self) -> None:
         if self.status != TaskState.PAUSED:
             raise TaskError('resumed can be only stopped task')
         self._service.stop_event = False
-        self._change_status(TaskState.READY)
+        if self._setupped:
+            self._change_status(TaskState.READY)
+        else:
+            self._change_status(TaskState.NOT_READY)
 
     def delete_folder(self) -> None:
         try:
