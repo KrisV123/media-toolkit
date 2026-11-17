@@ -129,6 +129,7 @@ class YoutubeBaseTask[ServiceT: YoutubeBase](Task, TaskSupportsCollection):
         if self.status in (TaskState.FINISHED, TaskState.FAIL, TaskState.PAUSED, TaskState.CANCELLED):
             return
         self._service.stop_event = True
+        gc.collect()
         self._change_status(TaskState.PAUSED)
 
     def prepare_resume(self) -> None:

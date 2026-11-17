@@ -7,6 +7,7 @@ from enum import IntEnum, auto
 from typing import assert_never
 
 from media_toolkit.type import DownloadInfo
+
 from .task_base import Task, TaskState
 from .event_bus import Events
 

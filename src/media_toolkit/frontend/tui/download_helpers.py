@@ -153,7 +153,7 @@ class Progress(Static):
         if status == TaskState.PAUSED and not self._is_timer_paused:
             self._timer.pause()
             self._is_timer_paused = True
-        elif status in (TaskState.IN_PROCESS, TaskState.READY) and self._is_timer_paused:
+        elif self._is_timer_paused:
             self._timer.resume()
             self._is_timer_paused = False
 

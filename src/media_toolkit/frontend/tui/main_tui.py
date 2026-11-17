@@ -108,7 +108,8 @@ class MainFrame(Static):
             self.downloads_widget.mount(new_widget)
         else:
             raise UIException("service for current format does not exist or is not registered")
-            
+
+        self.downloads_widget.scroll_end()
 
     def is_url(self, url: str) -> bool:
         try:
