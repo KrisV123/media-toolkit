@@ -32,5 +32,5 @@ class DownloadInfo:
     widget_name: str
     format: str
     is_playlist: bool
-    audio_quality: str
-    video_quality: str
+    audio_quality: int
+    video_quality: int

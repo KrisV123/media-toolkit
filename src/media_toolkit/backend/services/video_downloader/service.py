@@ -38,8 +38,8 @@ class CappedVideoConvertorPP(FFmpegVideoConvertorPP):
 class VideoDownloader(YoutubeBase):
     def __init__(self, download_info: DownloadInfo, id: int):
         super().__init__(download_info, id)
-        self.audio_quality = int(download_info.audio_quality[:-5])
-        self.video_quality = int(download_info.video_quality[:-1])
+        self.audio_quality = download_info.audio_quality
+        self.video_quality = download_info.video_quality
         self.options = {
             'format': self._create_format(),
             'ffmpeg_location': str(FFMPEG_DIR),

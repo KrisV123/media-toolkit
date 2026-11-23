@@ -1,7 +1,7 @@
 import asyncio
 import logging
 
-from media_toolkit.frontend import YtConvertorApp
+from media_toolkit.frontend import MediaToolkitApp
 from media_toolkit.backend import TaskManager
 from media_toolkit.backend.yt_dlp_patch import install_yt_dlp_patch
 
@@ -12,14 +12,14 @@ logging.basicConfig(
 )
 LOGGER = logging.getLogger(__name__)
 
-async def main():
+async def async_main():
     install_yt_dlp_patch()
     manager = TaskManager()
     manager.start()
     try:
-        await YtConvertorApp().run_async()
+        await MediaToolkitApp().run_async()
     finally:
         await manager.shutdown()
 
-if __name__ == '__main__':
-    asyncio.run(main())
+def main() -> None:
+    asyncio.run(async_main())

@@ -19,8 +19,7 @@ def _ctm_ytpopen_init(self: YtPopen, *args, **kwargs) -> None:
 
 def _register_process(owner: YoutubeBase, process: YtPopen) -> None:
     with owner.lock:
-        if owner:
-            owner.ffmpeg_processes.add(process)
+        owner.ffmpeg_processes.add(process)
     if owner.stop_event:
         process.kill()
 

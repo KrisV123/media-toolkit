@@ -144,7 +144,7 @@ class MainFrame(Static):
         await self.add_download_widget(message.download_info)
 
 
-class YtConvertorApp(App):
+class MediaToolkitApp(App):
     CSS_PATH = [
         '../css/global.css',
         '../css/input_bar.css',

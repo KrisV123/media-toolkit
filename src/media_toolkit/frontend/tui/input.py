@@ -11,11 +11,8 @@ from .messages import ConvertRequested
 
 class InputFormats(Static):
     format_buttons = (
-        Button(label=format.upper(), id=format)
-        for format in (
-            'mp3', 'flac', 'opus', 'wav', 'm4a',
-            'mp4', 'mkv', 'webm', 'mov'
-        )
+        'mp3', 'flac', 'opus', 'wav', 'm4a',
+        'mp4', 'mkv', 'webm', 'mov'
     )
 
     BINDINGS = [
@@ -28,7 +25,10 @@ class InputFormats(Static):
         self.cursor = 0
 
     def compose(self) -> Iterable[Widget]:
-        yield from self.format_buttons
+        yield from (
+            Button(label=format.upper(), id=format)
+            for format in self.format_buttons
+        )
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         for button in self.query(Button):
@@ -76,28 +76,26 @@ class ExtraInputSettings(Static):
         ('right', 'right', 'Right')
     ]
 
-    audio_quality = [
-        "32 kbps", "48 kbps", "64 kbps", "80 kbps",
-        "96 kbps", "112 kbps", "128 kbps", "160 kbps",
-        "192 kbps", "224 kbps", "256 kbps", "320 kbps",
-    ]
-    video_quality = ["480p", "720p", "1080p", "1440p", "2160p"]
+    audio_quality = (
+        32, 48, 64, 80, 96, 112, 128, 160, 192, 224, 256, 320,
+    )
+    video_quality = (480, 720, 1080, 1440, 2160)
 
     def __init__(self):
         super().__init__()
         self.cursor = 0
 
     def compose(self) -> Iterable[Widget]:
-        yield QualitySelect[str](
+        yield QualitySelect[int](
             options=[
-                (quality , quality)
+                (f'{quality} kbps', quality)
                 for quality in self.audio_quality
             ],
             prompt='audio quality',
             id='audio_quality'
         )
-        yield QualitySelect[str](
-            options=[(quality, quality) for quality in self.video_quality],
+        yield QualitySelect[int](
+            options=[(f'{quality}k', quality) for quality in self.video_quality],
             prompt='video quality',
             id='video_quality'
         )
@@ -114,12 +112,12 @@ class ExtraInputSettings(Static):
         button = self.query_one('#playlist', Button)
         return button.has_class('SelectedButton')
 
-    def get_audio_quality(self) -> str:
+    def get_audio_quality(self) -> int:
         select = self.query_one('#audio_quality', Select)
         value = select.value
         return self.audio_quality[-1] if isinstance(value, NoSelection) else value
 
-    def get_video_quality(self) -> str:
+    def get_video_quality(self) -> int:
         select = self.query_one('#video_quality', Select)
         value = select.value
         return self.video_quality[-1] if isinstance(value, NoSelection) else value

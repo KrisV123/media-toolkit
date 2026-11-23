@@ -39,7 +39,7 @@ dependencies = [
 ]
 
 [project.scripts]
-media-toolkit = "media_toolkit:main"
+media-toolkit = "media_toolkit.main:main"
 
 [build-system]
 requires = ["uv_build>=0.13.5,<0.14.0"]

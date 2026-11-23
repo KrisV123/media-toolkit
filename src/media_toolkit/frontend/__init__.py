@@ -1,3 +1,3 @@
-from .tui.main_tui import YtConvertorApp
+from .tui.main_tui import MediaToolkitApp
 
-__all__ = ['YtConvertorApp']
+__all__ = ['MediaToolkitApp']

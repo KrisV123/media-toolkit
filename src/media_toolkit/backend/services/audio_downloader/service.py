@@ -40,7 +40,7 @@ class CappedExtractAudioPP(FFmpegExtractAudioPP):
 class AudioDownloader(YoutubeBase):
     def __init__(self, download_info: DownloadInfo, id: int):
         super().__init__(download_info, id)
-        self.audio_quality = int(download_info.audio_quality[:-5])
+        self.audio_quality = download_info.audio_quality
 
         self.options: dict[str, Any] = {
             'format': self._create_format(),

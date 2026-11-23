@@ -35,9 +35,9 @@ class QualityLabels(Static):
         self.video_quality = download_info.video_quality
 
     def compose(self) -> Iterable[Widget]:
-        yield Label(content='audio quality: ' + self.audio_quality, id="audio-quality-label")
+        yield Label(content='audio quality: ' + f'{self.audio_quality} kbps', id="audio-quality-label")
         if self.format in VIDEO_FORMATS:
-            yield Label(content='video quality: ' + self.video_quality, id="video-quality-label")
+            yield Label(content='video quality: ' + f'{self.video_quality}p', id="video-quality-label")
 
 
 class DownloadLabels(Static):

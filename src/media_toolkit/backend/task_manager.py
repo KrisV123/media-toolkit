@@ -199,7 +199,7 @@ class TaskManager:
             for _ in range(self.metadata_workers_ammount)
         ]
 
-    async def shutdown(self) -> None:
+    async def shutdown_2(self) -> None:
         for worker in self.metadata_workers:
             worker.cancel()
         for worker in self.workers:
@@ -220,4 +220,27 @@ class TaskManager:
                 await self.stop_task(id)
 
         await asyncio.gather(*self.workers, return_exceptions=True)
+        self.workers.clear()
+
+    async def shutdown(self) -> None:
+        terminal_state = (TaskState.FINISHED, TaskState.FAIL, TaskState.CANCELLED)
+
+        for id in tuple(self._task_registry):
+            registry_item = self._task_registry[id]
+            if registry_item.task.status not in terminal_state:
+                await self.stop_task(id)
+
+        while not self.metadata_queue.empty():
+            self.metadata_queue.get_nowait()
+
+        while not self.task_queue.empty():
+            id = self.task_queue.get_nowait()
+            self._get_registry_item(id).pending = False
+
+        for worker in self.metadata_workers:
+            worker.cancel()
+        for worker in self.workers:
+            worker.cancel()
+
+        await asyncio.gather(*self.workers, *self.metadata_workers, return_exceptions=True)
         self.workers.clear()
