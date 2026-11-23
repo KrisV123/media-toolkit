@@ -8,9 +8,15 @@ from copy import deepcopy
 
 from media_toolkit.type import DownloadInfo, FFMPEG_DIR, DENO_EXE
 from media_toolkit.backend.services.youtube_base import YoutubeBase
-from media_toolkit.backend.services.type import ROUND_ABR_TOLERANCE
+from media_toolkit.backend.services.type import ROUND_ABR_TOLERANCE, YT_DLP_TUMBNAIL_SUPPORT
+from media_toolkit.backend.yt_dlp_patch import _CURRENT_DOWNLOAD
 
 class CappedExtractAudioPP(FFmpegExtractAudioPP):
+    """
+    custom audio extractor with capped audio quality.\n
+    If not, final output will be bloated with empty space.
+    """
+
     def __init__(self,
                  downloader: Any = None,
                  preferredcodec: str | None = None,
@@ -56,17 +62,22 @@ class AudioDownloader(YoutubeBase):
     def download(self, info: dict[str, Any]) -> None:
         """download audio from url with current settings"""
 
-        with yt_dlp.YoutubeDL(self.options) as ytd: #type:ignore
-            ytd.add_post_processor(
-                cast(
-                    PostProcessor,
-                    CappedExtractAudioPP(
-                        ytd,
-                        preferredcodec=self.format,
-                        preferredquality=str(self.audio_quality),
-                    )
-                ),
-                when='post_process',
-            )
-            ytd.add_post_processor(cast(PostProcessor, EmbedThumbnailPP(ytd)), when='post_process')
-            ytd.process_ie_result(deepcopy(info), download=True) #type:ignore
+        tok = _CURRENT_DOWNLOAD.set(self)
+        try:
+            with yt_dlp.YoutubeDL(self.options) as ytd: #type:ignore
+                ytd.add_post_processor(
+                    cast(
+                        PostProcessor,
+                        CappedExtractAudioPP(
+                            ytd,
+                            preferredcodec=self.format,
+                            preferredquality=str(self.audio_quality),
+                        )
+                    ),
+                    when='post_process',
+                )
+                if self.format in YT_DLP_TUMBNAIL_SUPPORT:
+                    ytd.add_post_processor(cast(PostProcessor, EmbedThumbnailPP(ytd)), when='post_process')
+                ytd.process_ie_result(deepcopy(info), download=True) #type:ignore
+        finally:
+            _CURRENT_DOWNLOAD.reset(tok)

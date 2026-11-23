@@ -3,6 +3,7 @@ import logging
 
 from media_toolkit.frontend import YtConvertorApp
 from media_toolkit.backend import TaskManager
+from media_toolkit.backend.yt_dlp_patch import install_yt_dlp_patch
 
 logging.basicConfig(
     filename='debug.log',
@@ -12,6 +13,7 @@ logging.basicConfig(
 LOGGER = logging.getLogger(__name__)
 
 async def main():
+    install_yt_dlp_patch()
     manager = TaskManager()
     manager.start()
     try:

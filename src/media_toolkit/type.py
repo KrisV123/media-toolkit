@@ -20,8 +20,8 @@ def get_downloads_folder() -> Path:
 
 DOWNLOAD_FOLDER = get_downloads_folder()
 
-AUDIO_FORMATS = {'mp3', 'flac'}
-VIDEO_FORMATS = {'mp4'}
+AUDIO_FORMATS = frozenset(('mp3', 'flac', 'opus', 'wav', 'm4a'))
+VIDEO_FORMATS = frozenset(('mp4', 'mkv', 'webm', 'mov'))
 
 FFMPEG_DIR = 'vendor/ffmpeg'
 DENO_EXE = 'vendor/deno/deno-x86_64-pc-windows-msvc/deno.exe'

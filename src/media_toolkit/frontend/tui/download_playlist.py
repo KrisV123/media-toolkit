@@ -14,7 +14,7 @@ from media_toolkit.backend import Events
 from media_toolkit.protocols import TaskSupportsCollection
 from media_toolkit.task_types import EstimProgressState, TaskState, DownloadState
 
-from .download_helpers import DownloadItem
+from .download_helpers import DownloadItem, ProgressButtons
 from .messages import StartTick, TaskStatusChanged
 
 SOLO_ICONS = {
@@ -152,4 +152,5 @@ class DownloadPlaylistWidget(DownloadItem[TaskSupportsCollection]):
         self.query_one(PlaylistCatalog).sync_timer()
         status = self.backend_task.status
         if status == TaskState.FAIL:
-            self.mount(Label(f'{str(self.backend_task.fail)}'))
+            self.mount(Label(str(self.backend_task.fail), markup=False))
+            self.query_one(ProgressButtons).set_error_state_buttons()

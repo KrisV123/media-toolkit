@@ -1,12 +1,20 @@
 import yt_dlp #type:ignore
+from yt_dlp.utils import Popen as YtPopen #type:ignore
+
+import weakref
+import threading
 from typing import Any, cast
 from urllib.parse import urlparse, parse_qs
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
+from contextvars import ContextVar
 
 from media_toolkit.backend.event_bus import EventBus, Events
 from media_toolkit.backend.services.type import StoppedService, ServiceError
 from media_toolkit.type import DownloadInfo, DOWNLOAD_FOLDER
+
+import logging
+LOGGER = logging.getLogger(__name__)
 
 @dataclass(slots=True)
 class DownloadParams:
@@ -24,6 +32,9 @@ class YoutubeBase(ABC):
         self.stop_event = False
         self.output_folder = DOWNLOAD_FOLDER / f'convertor_{self.id}'
         self.options: dict[str, Any] = {}
+
+        self.lock = threading.Lock()
+        self.ffmpeg_processes: weakref.WeakSet[YtPopen] = weakref.WeakSet()
 
         self.event_bus = EventBus()
         self.params_by_pos: dict[int | None, DownloadParams] = {}
@@ -96,3 +107,12 @@ class YoutubeBase(ABC):
     @abstractmethod
     def download(self, info: dict[str, Any]) -> None:
         """download audio from url with current settings"""
+
+    def kill_postprocess(self) -> None:
+        """kill postprocessing, if it is running"""
+
+        with self.lock:
+            processes = tuple(self.ffmpeg_processes)
+        for proc in processes:
+            if proc.poll() is None:
+                proc.kill()

@@ -10,6 +10,14 @@ from media_toolkit.type import DownloadInfo
 from .messages import ConvertRequested
 
 class InputFormats(Static):
+    format_buttons = (
+        Button(label=format.upper(), id=format)
+        for format in (
+            'mp3', 'flac', 'opus', 'wav', 'm4a',
+            'mp4', 'mkv', 'webm', 'mov'
+        )
+    )
+
     BINDINGS = [
         ('left', 'left', 'Left'),
         ('right', 'right', 'Right')
@@ -20,9 +28,7 @@ class InputFormats(Static):
         self.cursor = 0
 
     def compose(self) -> Iterable[Widget]:
-        yield Button(label='MP3', id='mp3')
-        yield Button(label='MP4', id='mp4')
-        yield Button(label='FLAC', id='flac')
+        yield from self.format_buttons
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         for button in self.query(Button):

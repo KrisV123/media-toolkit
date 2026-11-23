@@ -117,6 +117,13 @@ class ProgressButtons(Static):
         button = event.button
         await self.run_stop(button)
 
+    def set_error_state_buttons(self) -> None:
+        pause_button = self.query_one('#pause_resume_restart', Button)
+        pause_button.add_class('restart')
+        pause_button.label = 'restart'
+        stop_button = self.query_one('#stop', Button)
+        stop_button.disabled = True
+
 
 class Progress(Static):
     def __init__(self, backend_task: TaskSupportBasics):
