@@ -56,7 +56,13 @@ class YoutubeBase(ABC):
         query = parse_qs(urlparse(self.url).query)
         has_list = 'list' in query
         has_video = 'v' in query or urlparse(self.url).netloc.endswith('youtu.be')
+        is_short = 'shorts' in self.url
 
+        if is_short:
+            if self.is_playlist:
+                raise ServiceError("shorts can't be be downloaded in playlist group")
+            else:
+                return
         if not self.is_playlist and not has_video:
             raise ServiceError('user wants single video but url is only playlist')
         if self.is_playlist and not has_list:

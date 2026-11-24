@@ -95,7 +95,7 @@ class ExtraInputSettings(Static):
             id='audio_quality'
         )
         yield QualitySelect[int](
-            options=[(f'{quality}k', quality) for quality in self.video_quality],
+            options=[(f'{quality}p', quality) for quality in self.video_quality],
             prompt='video quality',
             id='video_quality'
         )
