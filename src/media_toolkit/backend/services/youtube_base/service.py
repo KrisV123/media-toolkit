@@ -7,7 +7,6 @@ from typing import Any, cast
 from urllib.parse import urlparse, parse_qs
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from contextvars import ContextVar
 
 from media_toolkit.backend.event_bus import EventBus, Events
 from media_toolkit.backend.services.type import StoppedService, ServiceError
