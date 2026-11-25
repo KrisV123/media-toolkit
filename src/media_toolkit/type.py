@@ -19,13 +19,11 @@ def get_downloads_folder() -> Path:
 def find_ffmpeg_dir() -> Path:
     """returns first found folder, that contains every ffmpeg tool"""
 
-    for dir in Path('vendor/ffmpeg').iterdir():
-        bin = dir / 'bin'
+    for directory in Path('vendor/ffmpeg').iterdir():
+        bin = directory / 'bin'
         if bin.is_dir():
-            ffmpeg = bin / 'ffmpeg.exe'
-            ffprobe = bin / 'ffprobe.exe'
-            ffplay = bin / 'ffplay.exe'
-            if ffmpeg.is_file() and ffprobe.is_file() and ffplay.is_file():
+            tools = ('ffmpeg.exe', 'ffprobe.exe', 'ffplay.exe')
+            if all((bin / tool).is_file() for tool in tools):
                 return bin
 
     raise SystemError('ffmpeg dir with all tools not found')

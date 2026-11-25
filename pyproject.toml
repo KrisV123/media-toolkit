@@ -29,6 +29,7 @@ dependencies = [
     "propcache==0.5.4",
     "pygments==2.21.0",
     "pywin32==312",
+    "requests>=2.34.2",
     "rich==15.0.0",
     "textual==8.2.8",
     "textual-dev==1.8.0",
